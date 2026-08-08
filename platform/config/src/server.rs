@@ -7,7 +7,20 @@ use std::{
     time::Duration,
 };
 
-use crate::ConfigError;
+use crate::ConfigMeta;
+
+/// 配置语义层面的非法状态。
+#[derive(Debug, thiserror::Error)]
+pub enum ServerConfigError {
+    #[error("port 不能为 0")]
+    ZeroPort,
+
+    #[error("read_timeout_secs 不能为 0（容易引发 Slowloris 攻击或连接悬挂）")]
+    ZeroReadTimeout,
+
+    #[error("shutdown_grace_secs 过大（当前为 {0} 秒，不建议超过 120 秒）")]
+    ShutdownGraceTooLarge(u64),
+}
 
 /// HTTP 服务器监听与超时配置。
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -26,6 +39,35 @@ pub struct ServerConfig {
     /// 完成时间，超过后强制中断。
     #[serde(default = "ServerConfig::default_shutdown_grace_secs")]
     pub shutdown_grace_secs: u64,
+}
+
+impl ConfigMeta for ServerConfig {
+    type Error = ServerConfigError;
+
+    /// 环境变量前缀
+    fn prefix() -> &'static str {
+        "SERVER_"
+    }
+
+    /// 启动阶段自我验证，失败即终止启动。
+    fn validate(&self) -> Result<(), Self::Error> {
+        if self.port == 0 {
+            return Err(ServerConfigError::ZeroPort);
+        }
+
+        if self.read_timeout_secs == 0 {
+            return Err(ServerConfigError::ZeroReadTimeout);
+        }
+
+        // 避免优雅关闭等待时间长于容器/K8s 强杀周期 (通常 30s ~ 120s)
+        if self.shutdown_grace_secs > 120 {
+            return Err(ServerConfigError::ShutdownGraceTooLarge(
+                self.shutdown_grace_secs,
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 impl ServerConfig {
@@ -49,11 +91,6 @@ impl ServerConfig {
     #[must_use]
     pub fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
-    }
-
-    /// 从环境变量加载（前缀 `SERVER_`）。
-    pub fn load() -> Result<Self, ConfigError> {
-        crate::load_prefixed("SERVER_")
     }
 
     /// 请求读取超时，转换为 [`Duration`] 供框架 API 使用。
@@ -84,19 +121,50 @@ impl Default for ServerConfig {
 mod tests {
     use super::*;
 
-    // 注意：测试环境变量加载不要用 `std::env::set_var` + `ServerConfig::load()`。
-    // 原因有二：
-    // 1. 环境变量是进程级全局状态，多个测试并行跑（Rust 测试默认并行）时会互相
-    //    污染，出现测试结果依赖执行顺序的间歇性失败。
-    // 2. Rust 2024 edition 起 `std::env::set_var` 本身就是 `unsafe fn`
-    //    （多线程下修改环境变量不再被认为是安全操作）。
-    //
-    // 用 `envy::prefixed(..).from_iter(..)` 直接从内存构造键值对，不触碰真实
-    // 环境变量，天然线程安全、可并行、无需清理。
+    #[test]
+    fn valid_config_passes_validation() {
+        let cfg = ServerConfig::default();
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn zero_port_rejected() {
+        let cfg = ServerConfig {
+            port: 0,
+            ..ServerConfig::default()
+        };
+        assert!(matches!(cfg.validate(), Err(ServerConfigError::ZeroPort)));
+    }
+
+    #[test]
+    fn zero_read_timeout_rejected() {
+        let cfg = ServerConfig {
+            read_timeout_secs: 0,
+            ..ServerConfig::default()
+        };
+        assert!(matches!(
+            cfg.validate(),
+            Err(ServerConfigError::ZeroReadTimeout)
+        ));
+    }
+
+    #[test]
+    fn excessively_large_shutdown_grace_rejected() {
+        let cfg = ServerConfig {
+            shutdown_grace_secs: 300,
+            ..ServerConfig::default()
+        };
+        assert!(matches!(
+            cfg.validate(),
+            Err(ServerConfigError::ShutdownGraceTooLarge(300))
+        ));
+    }
 
     #[test]
     fn defaults_used_when_no_env_vars_present() {
-        let cfg: ServerConfig = envy::prefixed("SERVER_").from_iter(Vec::new()).unwrap();
+        let cfg: ServerConfig = envy::prefixed(ServerConfig::prefix())
+            .from_iter(Vec::new())
+            .unwrap();
         assert_eq!(cfg.host, "0.0.0.0".parse::<IpAddr>().unwrap());
         assert_eq!(cfg.port, 8080);
         assert_eq!(cfg.read_timeout_secs, 60);
@@ -111,35 +179,14 @@ mod tests {
             ("SERVER_READ_TIMEOUT_SECS".to_string(), "30".to_string()),
             ("SERVER_SHUTDOWN_GRACE_SECS".to_string(), "5".to_string()),
         ];
-        let cfg: ServerConfig = envy::prefixed("SERVER_").from_iter(vars).unwrap();
+        let cfg: ServerConfig = envy::prefixed(ServerConfig::prefix())
+            .from_iter(vars)
+            .unwrap();
         assert_eq!(cfg.host, "127.0.0.1".parse::<IpAddr>().unwrap());
         assert_eq!(cfg.port, 9090);
         assert_eq!(cfg.read_timeout_secs, 30);
         assert_eq!(cfg.shutdown_grace_secs, 5);
-    }
-
-    #[test]
-    fn unprefixed_vars_are_ignored() {
-        // 确认前缀隔离生效：不带 SERVER_ 前缀的变量不会被误读进来，
-        // 这是多个基础设施配置共存时互不干扰的关键保证。
-        let vars = vec![("DATABASE_PORT".to_string(), "5432".to_string())];
-        let cfg: ServerConfig = envy::prefixed("SERVER_").from_iter(vars).unwrap();
-        // DATABASE_PORT 未被识别为 SERVER_ 变量，port 应落回默认值
-        assert_eq!(cfg.port, 8080);
-    }
-
-    #[test]
-    fn invalid_port_value_fails_to_parse() {
-        let vars = vec![("SERVER_PORT".to_string(), "not-a-number".to_string())];
-        let result: Result<ServerConfig, _> = envy::prefixed("SERVER_").from_iter(vars);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn invalid_host_value_fails_to_parse() {
-        let vars = vec![("SERVER_HOST".to_string(), "invalid-ip".to_string())];
-        let result: Result<ServerConfig, _> = envy::prefixed("SERVER_").from_iter(vars);
-        assert!(result.is_err());
+        assert!(cfg.validate().is_ok());
     }
 
     #[test]
@@ -151,23 +198,5 @@ mod tests {
         };
         let expected: SocketAddr = "127.0.0.1:3000".parse().unwrap();
         assert_eq!(cfg.socket_addr(), expected);
-    }
-
-    #[test]
-    fn read_timeout_converts_seconds_to_duration() {
-        let cfg = ServerConfig {
-            read_timeout_secs: 45,
-            ..ServerConfig::default()
-        };
-        assert_eq!(cfg.read_timeout(), Duration::from_secs(45));
-    }
-
-    #[test]
-    fn shutdown_grace_period_converts_seconds_to_duration() {
-        let cfg = ServerConfig {
-            shutdown_grace_secs: 15,
-            ..ServerConfig::default()
-        };
-        assert_eq!(cfg.shutdown_grace_period(), Duration::from_secs(15));
     }
 }

@@ -3,8 +3,8 @@
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 
-use crate::pg::config::DatabaseConfig;
-use crate::pg::error::DatabaseError;
+use crate::pg::config::PgDatabaseConfig;
+use crate::pg::error::PgDatabaseError;
 
 /// 读写连接池。
 ///
@@ -24,20 +24,20 @@ pub struct PgPools {
 
 impl PgPools {
     /// 按配置建立连接池。
-    pub async fn connect(config: &DatabaseConfig) -> Result<Self, DatabaseError> {
-        let write = Self::build_pool(config, &config.url).await?;
+    pub async fn connect(cfg: &PgDatabaseConfig) -> Result<Self, PgDatabaseError> {
+        let write = Self::build_pool(cfg, &cfg.url).await?;
 
-        let read = if let Some(replica_url) = config.replica_url.as_deref() {
-            Self::build_pool(config, replica_url).await?
+        let read = if cfg.has_replica() {
+            let replica_url = cfg.replica_url.as_deref().unwrap().trim();
+            Self::build_pool(cfg, replica_url).await?
         } else {
-            // 未配置 replica：克隆 write 的句柄，不建立新物理连接。
+            // 未配置或配置为空白 replica：克隆 write 句柄，不建立新物理连接
             write.clone()
         };
-
         Ok(Self { write, read })
     }
 
-    async fn build_pool(config: &DatabaseConfig, url: &str) -> Result<PgPool, DatabaseError> {
+    async fn build_pool(config: &PgDatabaseConfig, url: &str) -> Result<PgPool, PgDatabaseError> {
         PgPoolOptions::new()
             .max_connections(config.max_connections)
             .min_connections(config.min_connections)
@@ -46,19 +46,19 @@ impl PgPools {
             .idle_timeout(config.idle_timeout())
             .connect(url)
             .await
-            .map_err(DatabaseError::ConnectFailed)
+            .map_err(PgDatabaseError::ConnectFailed)
     }
 
     /// 健康检查：向 write pool 发一次最简单的查询，确认连接确实可用。
     /// 增加 2 秒硬超时，防止数据库悬挂拖垮 `/healthz` 端点。
-    pub async fn health_check(&self) -> Result<(), DatabaseError> {
+    pub async fn health_check(&self) -> Result<(), PgDatabaseError> {
         tokio::time::timeout(
             std::time::Duration::from_secs(2),
             sqlx::query("SELECT 1").execute(&self.write),
         )
         .await
-        .map_err(|_| DatabaseError::ConnectFailed(sqlx::Error::PoolTimedOut))?
-        .map_err(DatabaseError::ConnectFailed)?;
+        .map_err(|_| PgDatabaseError::ConnectFailed(sqlx::Error::PoolTimedOut))?
+        .map_err(PgDatabaseError::ConnectFailed)?;
 
         Ok(())
     }
@@ -67,53 +67,31 @@ impl PgPools {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigMeta;
 
-    fn config_with_url(url: &str) -> DatabaseConfig {
-        DatabaseConfig {
-            url: url.to_string(),
-            replica_url: None,
-            max_connections: 5,
-            min_connections: 0,
-            acquire_timeout_secs: 2,
-            max_lifetime_secs: 1800,
-            idle_timeout_secs: 600,
-        }
+    // 辅助函数：构造一个通过了 validate 的合法基础配置
+    fn valid_test_config(url: &str) -> PgDatabaseConfig {
+        PgDatabaseConfig::load_from(vec![
+            ("DATABASE_URL", url),
+            ("DATABASE_MAX_CONNECTIONS", "5"),
+            ("DATABASE_MIN_CONNECTIONS", "0"),
+            ("DATABASE_ACQUIRE_TIMEOUT_SECS", "2"),
+        ])
+        .unwrap()
     }
 
-    // 以下测试均不需要真实数据库：只验证"连不上时返回的是我们自己的错误
-    // 类型，而不是 panic 或裸的 sqlx::Error"，这部分不依赖真实网络成功，
-    // 用一个必然连不上的地址即可稳定复现。集成测试（真实连接、真实查询）
-    // 属于 `iam-infra` 或 apps/server 的职责，不在这个 crate 里做。
-
+    // pool 层的单测只关注网络/网络连接失败的映射，不关注配置字段非法
     #[tokio::test]
     async fn connect_to_unreachable_host_returns_connect_failed_error() {
-        let config = config_with_url("postgres://user:pass@127.0.0.1:1/nonexistent");
+        let config = valid_test_config("postgres://user:pass@127.0.0.1:1/nonexistent");
         let result = PgPools::connect(&config).await;
-        assert!(matches!(result, Err(DatabaseError::ConnectFailed(_))));
+        assert!(matches!(result, Err(PgDatabaseError::ConnectFailed(_))));
     }
 
     #[tokio::test]
     async fn connect_to_malformed_url_returns_connect_failed_error() {
-        let config = config_with_url("not-a-valid-connection-string");
+        let config = valid_test_config("not-a-valid-connection-string");
         let result = PgPools::connect(&config).await;
-        assert!(matches!(result, Err(DatabaseError::ConnectFailed(_))));
-    }
-
-    #[tokio::test]
-    async fn blank_replica_url_falls_back_to_cloning_write_pool_without_connecting() {
-        // replica_url 为空白字符串时，不应该真的尝试用这个空字符串去
-        // 建立连接（那样会产生一次不必要的、必然失败的连接尝试）；
-        // 应该走 write.clone() 这条分支——用一个必然连不上的 write 地址，
-        // 若 connect() 因为"尝试连接空白 replica_url"而在 write 之外
-        // 报出第二个错误路径，这个测试能捕获逻辑分支写错的情况。
-        let config = DatabaseConfig {
-            replica_url: Some("   ".to_string()),
-            ..config_with_url("postgres://user:pass@127.0.0.1:1/nonexistent")
-        };
-        let result = PgPools::connect(&config).await;
-        // write 本身连不上，无论 replica 分支对错，最终都应该是
-        // ConnectFailed；这里主要保证不会因为空白 replica_url 触发
-        // panic 或别的异常路径。
-        assert!(matches!(result, Err(DatabaseError::ConnectFailed(_))));
+        assert!(matches!(result, Err(PgDatabaseError::ConnectFailed(_))));
     }
 }

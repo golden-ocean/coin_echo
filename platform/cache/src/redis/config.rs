@@ -1,9 +1,10 @@
 //! 缓存连接配置。
 //!
-//! 对应环境变量前缀 `CACHE_`。
+//! 对应环境变量前缀 `REDIS_`。
 
 use std::time::Duration;
 
+use platform_config::ConfigMeta;
 use serde::Deserialize;
 
 /// Redis 连接池配置。
@@ -39,13 +40,22 @@ impl RedisConfig {
         5
     }
 
-    /// 从环境变量加载（前缀 `CACHE_`）。
-    pub fn load() -> Result<Self, platform_config::ConfigError> {
-        platform_config::load_prefixed("CACHE_")
+    #[must_use]
+    pub const fn timeout(&self) -> Duration {
+        Duration::from_secs(self.timeout_secs)
+    }
+}
+
+impl ConfigMeta for RedisConfig {
+    type Error = RedisConfigError;
+
+    /// 统一使用 `REDIS_` 环境变量前缀
+    fn prefix() -> &'static str {
+        "REDIS_"
     }
 
-    /// 启动阶段调用一次，失败即终止启动。
-    pub fn validate(&self) -> Result<(), RedisConfigError> {
+    /// 启动阶段自我验证
+    fn validate(&self) -> Result<(), Self::Error> {
         if self.url.trim().is_empty() {
             return Err(RedisConfigError::EmptyUrl);
         }
@@ -54,12 +64,8 @@ impl RedisConfig {
         }
         Ok(())
     }
-
-    #[must_use]
-    pub const fn timeout(&self) -> Duration {
-        Duration::from_secs(self.timeout_secs)
-    }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,10 +113,13 @@ mod tests {
         assert_eq!(cfg.timeout(), Duration::from_secs(10));
     }
 
+    // ---- 基于 ConfigMeta::load_from 的测试 ----
+
     #[test]
     fn defaults_applied_when_optional_env_vars_absent() {
-        let vars = vec![("CACHE_URL".to_string(), "redis://localhost/0".to_string())];
-        let cfg: RedisConfig = platform_config::load_prefixed_from("CACHE_", vars).unwrap();
+        let vars = vec![("REDIS_URL", "redis://localhost/0")];
+        // load_from 会自动应用前缀、反序列化默认值，并触发 validate()
+        let cfg = RedisConfig::load_from(vars).unwrap();
         assert_eq!(cfg.max_size, 16);
         assert_eq!(cfg.timeout_secs, 5);
     }
@@ -118,16 +127,22 @@ mod tests {
     #[test]
     fn missing_required_url_fails_to_load() {
         let empty_vars = Vec::<(&str, &str)>::new();
-        let result: Result<RedisConfig, _> =
-            platform_config::load_prefixed_from("CACHE_", empty_vars);
+        let result = RedisConfig::load_from(empty_vars);
         assert!(result.is_err());
     }
 
     #[test]
-    fn load_uses_cache_prefix_consistently_with_load_prefixed() {
-        let result = RedisConfig::load();
-        if let Err(err) = result {
-            assert!(err.to_string().contains("CACHE_"));
-        }
+    fn load_from_validates_semantic_rules() {
+        // 测试经过 load_from 反序列化成功，但未通过 validate() 业务校验的情况
+        let invalid_vars = vec![
+            ("REDIS_URL", "redis://localhost/0"),
+            ("REDIS_MAX_SIZE", "0"), // 触发 ZeroMaxSize 错误
+        ];
+        let result = RedisConfig::load_from(invalid_vars);
+        assert!(result.is_err());
+
+        // 确认错误信息中包含了正确的 REDIS_ 前缀
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("REDIS_"));
     }
 }

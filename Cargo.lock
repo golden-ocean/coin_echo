@@ -59,6 +59,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "platform_cache",
+ "platform_config",
+ "platform_database",
+ "platform_middleware",
+ "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",

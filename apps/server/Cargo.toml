@@ -4,13 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# 内部
+platform_cache = { workspace = true }
+platform_config = { workspace = true }
+platform_database = { workspace = true }
+platform_middleware = { workspace = true }
+
 # 框架
 tokio = { workspace = true }
 axum = { workspace = true }
-
 # 日志
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-
+# 数据库
+sqlx = { workspace = true }
 # 错误
 anyhow = { workspace = true }

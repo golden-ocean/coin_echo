@@ -1,7 +1,9 @@
 //! 优雅关闭信号监听。收到 SIGTERM/Ctrl-C 后停止接收新连接,
 //! 等现有请求处理完再退出 —— 配合k8s滚动发布,避免请求被硬切断。
 
-pub async fn shutdown_signal() {
+use std::time::Duration;
+
+pub async fn shutdown_signal(grace_period: Duration) {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -23,4 +25,6 @@ pub async fn shutdown_signal() {
         _ = ctrl_c => tracing::info!(target: "server::startup::graceful_shutdown", "received Ctrl+C, starting graceful shutdown"),
         _ = terminate => tracing::info!(target: "server::startup::graceful_shutdown", "received SIGTERM, starting graceful shutdown"),
     }
+
+    tokio::time::sleep(grace_period).await;
 }

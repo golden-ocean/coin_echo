@@ -4,9 +4,11 @@
 
 use std::time::Duration;
 
+use platform_config::ConfigMeta;
+
 /// 数据库连接池配置。
 #[derive(Debug, Clone, serde::Deserialize)]
-pub struct DatabaseConfig {
+pub struct PgDatabaseConfig {
     /// 主库（读写）连接串。
     pub url: String,
 
@@ -15,28 +17,28 @@ pub struct DatabaseConfig {
     #[serde(default)]
     pub replica_url: Option<String>,
 
-    #[serde(default = "DatabaseConfig::default_max_connections")]
+    #[serde(default = "PgDatabaseConfig::default_max_connections")]
     pub max_connections: u32,
 
-    #[serde(default = "DatabaseConfig::default_min_connections")]
+    #[serde(default = "PgDatabaseConfig::default_min_connections")]
     pub min_connections: u32,
 
     /// 获取连接的超时时间（秒）：连接池已满且无空闲连接时，等待多久后放弃。
-    #[serde(default = "DatabaseConfig::default_acquire_timeout_secs")]
+    #[serde(default = "PgDatabaseConfig::default_acquire_timeout_secs")]
     pub acquire_timeout_secs: u64,
 
     /// 单个连接的最大存活时间（秒），超过后连接池主动回收重建。
-    #[serde(default = "DatabaseConfig::default_max_lifetime_secs")]
+    #[serde(default = "PgDatabaseConfig::default_max_lifetime_secs")]
     pub max_lifetime_secs: u64,
 
     /// 连接最大空闲时间（秒），超过后被释放归还系统。
-    #[serde(default = "DatabaseConfig::default_idle_timeout_secs")]
+    #[serde(default = "PgDatabaseConfig::default_idle_timeout_secs")]
     pub idle_timeout_secs: u64,
 }
 
 /// 配置语义层面的非法状态：字段本身能解析成功，但组合起来不合理。
 #[derive(Debug, thiserror::Error)]
-pub enum DatabaseConfigError {
+pub enum PgDatabaseConfigError {
     #[error("url 不能为空")]
     EmptyUrl,
 
@@ -50,7 +52,7 @@ pub enum DatabaseConfigError {
     MinExceedsMax { min: u32, max: u32 },
 }
 
-impl DatabaseConfig {
+impl PgDatabaseConfig {
     const fn default_max_connections() -> u32 {
         20
     }
@@ -69,35 +71,6 @@ impl DatabaseConfig {
 
     const fn default_idle_timeout_secs() -> u64 {
         10 * 60 // 10 分钟
-    }
-
-    /// 从环境变量加载（前缀 `DATABASE_`）。
-    pub fn load() -> Result<Self, platform_config::ConfigError> {
-        platform_config::load_prefixed("DATABASE_")
-    }
-
-    /// 启动阶段调用一次，失败即终止启动。
-    pub fn validate(&self) -> Result<(), DatabaseConfigError> {
-        if self.url.trim().is_empty() {
-            return Err(DatabaseConfigError::EmptyUrl);
-        }
-        if let Some(ref replica) = self.replica_url {
-            if replica.trim().is_empty() {
-                return Err(DatabaseConfigError::EmptyReplicaUrl);
-            }
-        }
-        if self.max_connections == 0 {
-            return Err(DatabaseConfigError::ZeroMaxConnections(
-                self.max_connections,
-            ));
-        }
-        if self.min_connections > self.max_connections {
-            return Err(DatabaseConfigError::MinExceedsMax {
-                min: self.min_connections,
-                max: self.max_connections,
-            });
-        }
-        Ok(())
     }
 
     #[must_use]
@@ -128,12 +101,45 @@ impl DatabaseConfig {
     }
 }
 
+impl ConfigMeta for PgDatabaseConfig {
+    type Error = PgDatabaseConfigError;
+
+    /// 统一使用 `DATABASE_` 环境变量前缀
+    fn prefix() -> &'static str {
+        "DATABASE_"
+    }
+
+    /// 启动阶段自我验证
+    fn validate(&self) -> Result<(), Self::Error> {
+        if self.url.trim().is_empty() {
+            return Err(PgDatabaseConfigError::EmptyUrl);
+        }
+        if let Some(ref replica) = self.replica_url {
+            if replica.trim().is_empty() {
+                return Err(PgDatabaseConfigError::EmptyReplicaUrl);
+            }
+        }
+        if self.max_connections == 0 {
+            return Err(PgDatabaseConfigError::ZeroMaxConnections(
+                self.max_connections,
+            ));
+        }
+        if self.min_connections > self.max_connections {
+            return Err(PgDatabaseConfigError::MinExceedsMax {
+                min: self.min_connections,
+                max: self.max_connections,
+            });
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn valid_config() -> DatabaseConfig {
-        DatabaseConfig {
+    fn valid_config() -> PgDatabaseConfig {
+        PgDatabaseConfig {
             url: "postgres://user:pass@localhost/db".to_string(),
             replica_url: None,
             max_connections: 20,
@@ -151,47 +157,50 @@ mod tests {
 
     #[test]
     fn empty_url_rejected() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             url: "   ".to_string(),
             ..valid_config()
         };
-        assert!(matches!(cfg.validate(), Err(DatabaseConfigError::EmptyUrl)));
+        assert!(matches!(
+            cfg.validate(),
+            Err(PgDatabaseConfigError::EmptyUrl)
+        ));
     }
 
     #[test]
     fn empty_replica_url_rejected() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             replica_url: Some("   ".to_string()),
             ..valid_config()
         };
         assert!(matches!(
             cfg.validate(),
-            Err(DatabaseConfigError::EmptyReplicaUrl)
+            Err(PgDatabaseConfigError::EmptyReplicaUrl)
         ));
     }
 
     #[test]
     fn zero_max_connections_rejected() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             max_connections: 0,
             ..valid_config()
         };
         assert!(matches!(
             cfg.validate(),
-            Err(DatabaseConfigError::ZeroMaxConnections(0))
+            Err(PgDatabaseConfigError::ZeroMaxConnections(0))
         ));
     }
 
     #[test]
     fn min_exceeding_max_rejected() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             min_connections: 30,
             max_connections: 20,
             ..valid_config()
         };
         assert!(matches!(
             cfg.validate(),
-            Err(DatabaseConfigError::MinExceedsMax { min: 30, max: 20 })
+            Err(PgDatabaseConfigError::MinExceedsMax { min: 30, max: 20 })
         ));
     }
 
@@ -200,7 +209,7 @@ mod tests {
     #[test]
     fn has_replica_reflects_optional_field() {
         assert!(!valid_config().has_replica());
-        let with_replica = DatabaseConfig {
+        let with_replica = PgDatabaseConfig {
             replica_url: Some("postgres://replica/db".to_string()),
             ..valid_config()
         };
@@ -211,7 +220,7 @@ mod tests {
     fn has_replica_returns_false_for_blank_replica_url_even_without_prior_validation() {
         // has_replica 不依赖调用方提前调用过 validate()，自身就应识别出
         // 空白字符串不算"有效副本"——即便这是一个尚未校验过的实例。
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             replica_url: Some("   ".to_string()),
             ..valid_config()
         };
@@ -220,7 +229,7 @@ mod tests {
 
     #[test]
     fn has_replica_returns_false_for_empty_string_replica_url() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             replica_url: Some(String::new()),
             ..valid_config()
         };
@@ -231,7 +240,7 @@ mod tests {
 
     #[test]
     fn acquire_timeout_converts_seconds_to_duration() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             acquire_timeout_secs: 15,
             ..valid_config()
         };
@@ -240,7 +249,7 @@ mod tests {
 
     #[test]
     fn max_lifetime_converts_seconds_to_duration() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             max_lifetime_secs: 900,
             ..valid_config()
         };
@@ -249,19 +258,17 @@ mod tests {
 
     #[test]
     fn idle_timeout_converts_seconds_to_duration() {
-        let cfg = DatabaseConfig {
+        let cfg = PgDatabaseConfig {
             idle_timeout_secs: 300,
             ..valid_config()
         };
         assert_eq!(cfg.idle_timeout(), Duration::from_secs(300));
     }
 
-    // ---- 环境变量加载（envy 直接构造，不触碰真实进程环境变量） ----
-
     #[test]
     fn defaults_applied_when_optional_env_vars_absent() {
         let vars = vec![("DATABASE_URL".to_string(), "postgres://x/y".to_string())];
-        let cfg: DatabaseConfig = platform_config::load_prefixed_from("DATABASE_", vars).unwrap();
+        let cfg: PgDatabaseConfig = PgDatabaseConfig::load_from(vars).unwrap();
         assert_eq!(cfg.max_connections, 20);
         assert_eq!(cfg.min_connections, 2);
         assert_eq!(cfg.idle_timeout_secs, 600);
@@ -271,8 +278,7 @@ mod tests {
     #[test]
     fn missing_required_url_fails_to_load() {
         let empty_vars = Vec::<(&str, &str)>::new();
-        let result: Result<DatabaseConfig, _> =
-            platform_config::load_prefixed_from("DATABASE_", empty_vars);
+        let result: Result<PgDatabaseConfig, _> = PgDatabaseConfig::load_from(empty_vars);
         assert!(result.is_err());
     }
 
@@ -283,7 +289,7 @@ mod tests {
             ("DATABASE_REPLICA_URL", "postgres://replica/db"),
         ];
 
-        let cfg: DatabaseConfig = platform_config::load_prefixed_from("DATABASE_", vars).unwrap();
+        let cfg: PgDatabaseConfig = PgDatabaseConfig::load_from(vars).unwrap();
 
         assert_eq!(cfg.replica_url.as_deref(), Some("postgres://replica/db"));
     }
@@ -306,7 +312,7 @@ mod tests {
         // 由于 load() 直接读取真实进程环境变量，这里不主动设置任何
         // DATABASE_ 变量，只验证"未配置时失败、且错误信息包含正确前缀"
         // 这个不依赖具体环境状态的稳定行为。
-        let result = DatabaseConfig::load();
+        let result = PgDatabaseConfig::load();
         if let Err(err) = result {
             assert!(err.to_string().contains("DATABASE_"));
         }

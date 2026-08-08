@@ -4,17 +4,18 @@ members = [
     "apps/server",
 
     "platform/cache",
-    "platform/middleware",
     "platform/config",
     "platform/database",
     "platform/kernel",
+    "platform/middleware",
+
     # "platform/security",
     # "platform/telemetry"
 
-     "crates/iam/application",
-     "crates/iam/domain",
-     "crates/iam/infrastructure",
-     "crates/iam/api"
+    "crates/iam/application",
+    "crates/iam/domain",
+    "crates/iam/infrastructure",
+    "crates/iam/api"
 ]
 
 [workspace.package]
@@ -29,9 +30,9 @@ license = "MIT"
 # platform
 platform_cache = { path = "platform/cache" }
 platform_config = { path = "platform/config" }
-platform_middleware = { path = "platform/middleware" }
 platform_database = { path = "platform/database" }
 platform_kernel = { path = "platform/kernel" }
+platform_middleware = { path = "platform/middleware" }
 # platform_security = { path = "platform/security" }
 # platform_telemetry = { path = "platform/telemetry" }
 

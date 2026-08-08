@@ -15,4 +15,6 @@
 //! 写任何分支判断。以后接入真实只读副本，只需配置
 //! `DATABASE_REPLICA_URL`，代码零改动。
 
-pub mod pg;
+mod pg;
+
+pub use pg::{PgDatabaseConfig, PgPools};
