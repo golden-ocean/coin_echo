@@ -1,0 +1,127 @@
+[workspace]
+resolver = "3"
+members = [
+    "apps/server",
+
+    # "platform/cache",
+    "platform/middleware",
+    "platform/config",
+    # "platform/database",
+    # "platform/kernel",
+    # "platform/security",
+    # "platform/telemetry"
+
+     "crates/iam/application",
+     "crates/iam/domain",
+     "crates/iam/infrastructure",
+     "crates/iam/api",
+]
+
+[workspace.package]
+# name = "coin_echo"
+version = "0.1.0"
+edition = "2024"
+authors = ["ocean"]
+license = "MIT"
+
+[workspace.dependencies]
+# 内部模块
+# platform
+# platform_cache = { path = "platform/cache" }
+platform_config = { path = "platform/config" }
+platform_middleware = { path = "platform/middleware" }
+# platform_database = { path = "platform/database" }
+# platform_kernel = { path = "platform/kernel" }
+# platform_security = { path = "platform/security" }
+# platform_telemetry = { path = "platform/telemetry" }
+
+# iam 模块
+iam_application = { path = "crates/iam/application" }
+iam_domain = { path = "crates/iam/domain" }
+iam_infrastructure = { path = "crates/iam/infrastructure" }
+iam_api = { path = "crates/iam/api" }
+
+# 核心框架与运行时
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "io-util", "sync", "fs"] }
+axum = { version = "0.8", features = ["macros"] }
+async-trait = { version = "0.1" }
+
+# # 中间件
+# tower = { version = "0.5", features = ["util", "limit", "timeout"] }
+# tower-http = { version = "0.7", features = [
+#     "trace",
+#     "request-id",
+#     "cors",
+#     "compression-full",
+#     "timeout",
+#     "limit",
+#     "catch-panic",
+#     "set-header",
+#     "sensitive-headers",
+# ] }
+# governor = { version = "0.10" }
+# tower_governor = { version = "0.8" }
+# futures-util = { version = "0.3" }
+# http = { version = "1.4" }
+# http-body = { version = "1.1" }
+# http-body-util = { version = "0.1" }
+# bytes = { version = "1.12" }
+
+# 序列化与数据处理
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+
+# 错误处理
+thiserror = { version = "2.0" }
+anyhow = { version = "1.0" }
+strum = { version = "0.28", features = ["derive"] }
+
+# 日志
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry","fmt", "json"] }
+# tracing-appender = { version = "0.2" }
+
+# 可观测性 (OpenTelemetry)
+# opentelemetry = { version = "0.32", default-features = false, features = ["trace"] }
+# opentelemetry_sdk = { version = "0.32", default-features = false, features = ["trace", "rt-tokio"] }
+# opentelemetry-otlp = { version = "0.32", default-features = false, features = ["trace", "http-proto", "reqwest-rustls-webpki-roots"] }
+# tracing-opentelemetry = { version = "0.33", default-features = false, features = ["tracing-log"] }
+
+# 数据库与时间
+sqlx = { version = "0.9", features = [ "runtime-tokio", "tls-rustls-ring-webpki", "postgres", "derive", "macros", "uuid", "chrono"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v7", "serde"] }
+
+# 字段验证 正则
+validator = { version = "0.20", features = ["derive"] }
+regex = { version = "1.12" }
+
+# 加密
+argon2 = { version = "0.5" , features = ["std","rand"] }
+zeroize = { version = "1.9" }
+
+# 配置与工具
+# config = { version = "0.15", features = ["toml", "json"] }
+dotenvy = { version = "0.15" }
+envy = { version = "0.4" }
+tempfile = { version = "3" }
+
+# OpenAPI
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+unwrap_used = "warn"
+
+[profile.release]
+opt-level = 3              # 优化级别（0-3），3 为全量优化性能
+lto = "fat"                # 链接时全程序优化，大幅减小体积并提高性能
+codegen-units = 1          # 减少代码生成单元以提升优化空间（代价是编译时间变长）
+panic = "abort"            # 发生 panic 时直接崩溃退出，去除异常展开代码以减小二进制体积
+strip = "symbols"          # 剥离符号表（类似于 strip 工具），进一步减小文件体积
+debug = false              # 禁用调试符号（默认也是关闭的）

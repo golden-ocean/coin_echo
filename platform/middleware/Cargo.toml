@@ -1,0 +1,37 @@
+[package]
+name = "platform_middleware"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# 序列化
+serde = { workspace = true }
+
+# 中间件
+tower = { version = "0.5", features = ["util", "limit", "timeout"] }
+tower-http = { version = "0.7", features = [
+    "trace",
+    "request-id",
+    "cors",
+    "compression-full",
+    "timeout",
+    "limit",
+    "catch-panic",
+    "set-header",
+    "sensitive-headers",
+] }
+governor = { version = "0.10" }
+tower_governor = { version = "0.8" }
+futures-util = { version = "0.3" }
+http = { version = "1.4" }
+http-body = { version = "1.1" }
+http-body-util = { version = "0.1" }
+bytes = { version = "1.12" }
+
+# 日志
+tracing = { workspace = true }
+
+[lints]
+workspace = true
