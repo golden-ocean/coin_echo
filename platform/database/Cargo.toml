@@ -1,0 +1,27 @@
+[package]
+name = "platform_database"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# 内部
+platform_kernel = { workspace = true }
+platform_config = { workspace = true }
+
+# 异步
+tokio = { workspace = true }
+
+# 数据库
+sqlx = { workspace = true }
+# 错误
+thiserror = { workspace = true }
+# 序列化
+serde = { workspace = true }
+
+
+[dev-dependencies]
+
+[lints]
+workspace = true

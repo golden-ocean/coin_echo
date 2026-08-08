@@ -1,0 +1,27 @@
+[package]
+name = "platform_cache"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# 内部
+platform_kernel = { workspace = true }
+platform_config = { workspace = true }
+
+# 框架
+tokio = { workspace = true }
+# 序列化
+serde = { workspace = true }
+# 错误
+thiserror = { workspace = true }
+# redis
+deadpool-redis = { version = "0.23", features = ["rt_tokio_1"] }
+
+[dev-dependencies]
+tokio = { workspace = true }
+envy = { workspace = true }
+
+[lints]
+workspace = true

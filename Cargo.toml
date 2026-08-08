@@ -3,18 +3,18 @@ resolver = "3"
 members = [
     "apps/server",
 
-    # "platform/cache",
+    "platform/cache",
     "platform/middleware",
     "platform/config",
-    # "platform/database",
-    # "platform/kernel",
+    "platform/database",
+    "platform/kernel",
     # "platform/security",
     # "platform/telemetry"
 
      "crates/iam/application",
      "crates/iam/domain",
      "crates/iam/infrastructure",
-     "crates/iam/api",
+     "crates/iam/api"
 ]
 
 [workspace.package]
@@ -27,11 +27,11 @@ license = "MIT"
 [workspace.dependencies]
 # 内部模块
 # platform
-# platform_cache = { path = "platform/cache" }
+platform_cache = { path = "platform/cache" }
 platform_config = { path = "platform/config" }
 platform_middleware = { path = "platform/middleware" }
-# platform_database = { path = "platform/database" }
-# platform_kernel = { path = "platform/kernel" }
+platform_database = { path = "platform/database" }
+platform_kernel = { path = "platform/kernel" }
 # platform_security = { path = "platform/security" }
 # platform_telemetry = { path = "platform/telemetry" }
 
