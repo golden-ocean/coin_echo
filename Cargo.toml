@@ -8,9 +8,8 @@ members = [
     "platform/database",
     "platform/kernel",
     "platform/middleware",
-
-    # "platform/security",
-    # "platform/telemetry"
+    "platform/security",
+    "platform/telemetry",
 
     "crates/iam/application",
     "crates/iam/domain",
@@ -33,8 +32,8 @@ platform_config = { path = "platform/config" }
 platform_database = { path = "platform/database" }
 platform_kernel = { path = "platform/kernel" }
 platform_middleware = { path = "platform/middleware" }
-# platform_security = { path = "platform/security" }
-# platform_telemetry = { path = "platform/telemetry" }
+platform_security = { path = "platform/security" }
+platform_telemetry = { path = "platform/telemetry" }
 
 # iam 模块
 iam_application = { path = "crates/iam/application" }
@@ -75,12 +74,11 @@ serde_json = { version = "1.0" }
 # 错误处理
 thiserror = { version = "2.0" }
 anyhow = { version = "1.0" }
-strum = { version = "0.28", features = ["derive"] }
 
 # 日志
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry","fmt", "json"] }
-# tracing-appender = { version = "0.2" }
+tracing-appender = { version = "0.2" }
 
 # 可观测性 (OpenTelemetry)
 # opentelemetry = { version = "0.32", default-features = false, features = ["trace"] }
@@ -98,7 +96,7 @@ validator = { version = "0.20", features = ["derive"] }
 regex = { version = "1.12" }
 
 # 加密
-argon2 = { version = "0.5" , features = ["std","rand"] }
+# argon2 = { version = "0.5" , features = ["std","rand"] }
 zeroize = { version = "1.9" }
 
 # 配置与工具

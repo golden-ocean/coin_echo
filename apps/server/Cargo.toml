@@ -3,20 +3,37 @@ name = "apps_server"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "apps_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "apps_server"
+path = "src/main.rs"
+
 [dependencies]
 # 内部
 platform_cache = { workspace = true }
 platform_config = { workspace = true }
 platform_database = { workspace = true }
+platform_kernel = { workspace = true }
 platform_middleware = { workspace = true }
+platform_security = { workspace = true }
+platform_telemetry = { workspace = true }
 
 # 框架
 tokio = { workspace = true }
 axum = { workspace = true }
 # 日志
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 # 数据库
 sqlx = { workspace = true }
 # 错误
+thiserror = { workspace = true }
 anyhow = { workspace = true }
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+# OpenAPI
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }

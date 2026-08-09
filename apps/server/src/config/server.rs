@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use crate::ConfigMeta;
+use platform_config::ConfigMeta;
 
 /// 配置语义层面的非法状态。
 #[derive(Debug, thiserror::Error)]
@@ -161,10 +161,11 @@ mod tests {
     }
 
     #[test]
-    fn defaults_used_when_no_env_vars_present() {
-        let cfg: ServerConfig = envy::prefixed(ServerConfig::prefix())
-            .from_iter(Vec::new())
-            .unwrap();
+    fn defaults_used_when_loading_empty_kv() {
+        // 使用 load_from 传入空迭代器，验证默认值填充
+        let empty_vars: Vec<(&str, &str)> = vec![];
+        let cfg = ServerConfig::load_from(empty_vars).unwrap();
+
         assert_eq!(cfg.host, "0.0.0.0".parse::<IpAddr>().unwrap());
         assert_eq!(cfg.port, 8080);
         assert_eq!(cfg.read_timeout_secs, 60);
@@ -172,16 +173,17 @@ mod tests {
     }
 
     #[test]
-    fn all_fields_loaded_from_prefixed_vars() {
+    fn all_fields_loaded_and_validated_via_load_from() {
+        // 使用 load_from 模拟环境变量 KV 映射输入
         let vars = vec![
-            ("SERVER_HOST".to_string(), "127.0.0.1".to_string()),
-            ("SERVER_PORT".to_string(), "9090".to_string()),
-            ("SERVER_READ_TIMEOUT_SECS".to_string(), "30".to_string()),
-            ("SERVER_SHUTDOWN_GRACE_SECS".to_string(), "5".to_string()),
+            ("SERVER_HOST", "127.0.0.1"),
+            ("SERVER_PORT", "9090"),
+            ("SERVER_READ_TIMEOUT_SECS", "30"),
+            ("SERVER_SHUTDOWN_GRACE_SECS", "5"),
         ];
-        let cfg: ServerConfig = envy::prefixed(ServerConfig::prefix())
-            .from_iter(vars)
-            .unwrap();
+
+        let cfg = ServerConfig::load_from(vars).unwrap();
+
         assert_eq!(cfg.host, "127.0.0.1".parse::<IpAddr>().unwrap());
         assert_eq!(cfg.port, 9090);
         assert_eq!(cfg.read_timeout_secs, 30);

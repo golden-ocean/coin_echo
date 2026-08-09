@@ -15,4 +15,5 @@ mod config;
 mod error;
 mod pool;
 
+pub use config::RedisConfig;
 pub use pool::RedisPool;

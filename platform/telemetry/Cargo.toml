@@ -1,0 +1,22 @@
+[package]
+name = "platform_telemetry"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# 内部
+platform_kernel = { workspace = true }
+platform_config = { workspace = true }
+# 序列化
+serde = { workspace = true }
+# 错误
+thiserror = { workspace = true }
+# 追踪
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,28 @@
+[package]
+name = "platform_security"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# 内部
+platform_kernel = { workspace = true }
+platform_config = { workspace = true }
+
+# 异步
+tokio = { workspace = true }
+# 序列化
+serde = { workspace = true }
+# 错误
+thiserror = { workspace = true }
+# jwt
+chrono = { workspace = true }
+
+# 密码哈希
+argon2 = { version = "0.5" , features = ["std","rand"] }
+# JSON Web Token
+jsonwebtoken = { version = "11.0", features = ["rust_crypto"] }
+# 权限鉴定
+casbin = { version = "2.20", default-features = false, features = ["runtime-tokio", "logging", "incremental"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
