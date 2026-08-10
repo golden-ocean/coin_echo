@@ -12,6 +12,8 @@ use std::sync::Arc;
 use axum::Router;
 
 use crate::AppState;
+use platform_config::ConfigMeta;
+use platform_middleware::MiddlewareConfig;
 
 pub fn build(state: Arc<AppState>) -> Router {
     let router = Router::new()
@@ -20,13 +22,12 @@ pub fn build(state: Arc<AppState>) -> Router {
         .with_state(state)
         .merge(openapi::router());
 
-    return router;
-    // // 中间件配置错误不应阻止服务启动（与数据库等硬依赖不同），失败时
-    // // 落回默认值。
-    // let middleware_config = MiddlewareConfig::load().unwrap_or_else(|err| {
-    //     tracing::warn!(%err, "中间件配置加载失败，使用默认值");
-    //     MiddlewareConfig::default()
-    // });
+    // 中间件配置错误不应阻止服务启动（与数据库等硬依赖不同），失败时
+    // 落回默认值。
+    let middleware_config = MiddlewareConfig::load().unwrap_or_else(|err| {
+        tracing::warn!(%err, "中间件配置加载失败，使用默认值");
+        MiddlewareConfig::default()
+    });
 
-    // platform_middleware::apply(router, &middleware_config)
+    platform_middleware::apply(router, &middleware_config)
 }

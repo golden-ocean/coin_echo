@@ -21,7 +21,6 @@ deadpool-redis = { version = "0.23", features = ["rt_tokio_1"] }
 
 [dev-dependencies]
 tokio = { workspace = true }
-envy = { workspace = true }
 
 [lints]
 workspace = true

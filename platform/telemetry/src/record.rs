@@ -16,6 +16,8 @@
 //!   接入 `tracing-opentelemetry` 后，同一份字段会被自动转换为当前 span
 //!   的 attributes，不需要调用点做任何改动。
 
+use std::borrow::Cow;
+
 use platform_kernel::error::ErrorMeta;
 
 /// 一次错误观测的结构化快照。
@@ -50,7 +52,7 @@ impl ErrorObservation {
             // detail 字段"，两者定位不同。
             detail: kind
                 .is_detail_safe_to_expose()
-                .then(|| err.detail())
+                .then(|| err.detail().map(Cow::into_owned))
                 .flatten(),
             field_count: err.fields().len(),
         }
@@ -93,8 +95,8 @@ mod tests {
         fn code(&self) -> &'static str {
             "sample.error"
         }
-        fn detail(&self) -> Option<String> {
-            self.detail.clone()
+        fn detail(&self) -> Option<Cow<'_, str>> {
+            self.detail.as_deref().map(Cow::Borrowed)
         }
         fn fields(&self) -> Vec<FieldError> {
             self.fields.clone()

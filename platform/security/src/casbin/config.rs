@@ -84,4 +84,3 @@ mod tests {
         assert_eq!(CasbinConfig::prefix(), "CASBIN_");
     }
 }
-

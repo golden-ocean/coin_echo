@@ -46,27 +46,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal
 axum = { version = "0.8", features = ["macros"] }
 async-trait = { version = "0.1" }
 
-# # 中间件
-# tower = { version = "0.5", features = ["util", "limit", "timeout"] }
-# tower-http = { version = "0.7", features = [
-#     "trace",
-#     "request-id",
-#     "cors",
-#     "compression-full",
-#     "timeout",
-#     "limit",
-#     "catch-panic",
-#     "set-header",
-#     "sensitive-headers",
-# ] }
-# governor = { version = "0.10" }
-# tower_governor = { version = "0.8" }
-# futures-util = { version = "0.3" }
-# http = { version = "1.4" }
-# http-body = { version = "1.1" }
-# http-body-util = { version = "0.1" }
-# bytes = { version = "1.12" }
-
 # 序列化与数据处理
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
@@ -80,12 +59,6 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry","fmt", "json"] }
 tracing-appender = { version = "0.2" }
 
-# 可观测性 (OpenTelemetry)
-# opentelemetry = { version = "0.32", default-features = false, features = ["trace"] }
-# opentelemetry_sdk = { version = "0.32", default-features = false, features = ["trace", "rt-tokio"] }
-# opentelemetry-otlp = { version = "0.32", default-features = false, features = ["trace", "http-proto", "reqwest-rustls-webpki-roots"] }
-# tracing-opentelemetry = { version = "0.33", default-features = false, features = ["tracing-log"] }
-
 # 数据库与时间
 sqlx = { version = "0.9", features = [ "runtime-tokio", "tls-rustls-ring-webpki", "postgres", "derive", "macros", "uuid", "chrono"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -96,18 +69,15 @@ validator = { version = "0.20", features = ["derive"] }
 regex = { version = "1.12" }
 
 # 加密
-# argon2 = { version = "0.5" , features = ["std","rand"] }
 zeroize = { version = "1.9" }
 
 # 配置与工具
-# config = { version = "0.15", features = ["toml", "json"] }
-dotenvy = { version = "0.15" }
-envy = { version = "0.4" }
+figment = { version = "0.10", features = ["env"] }
 tempfile = { version = "3" }
 
 # OpenAPI
 utoipa = { version = "5", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "9", features = ["axum"] }
+# utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

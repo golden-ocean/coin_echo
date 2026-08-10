@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::error::{ErrorKind, FieldError};
 
 /// 错误的语义描述契约。
@@ -59,7 +61,7 @@ pub trait ErrorMeta {
     ///
     /// 服务端类错误（[`ErrorKind::is_detail_safe_to_expose`] 为 `false`）返回的
     /// 内容会在传输层被丢弃，因此这里无需自行判断是否脱敏。
-    fn detail(&self) -> Option<String> {
+    fn detail(&self) -> Option<Cow<'_, str>> {
         None
     }
 
@@ -90,7 +92,7 @@ where
         (**self).code()
     }
 
-    fn detail(&self) -> Option<String> {
+    fn detail(&self) -> Option<Cow<'_, str>> {
         (**self).detail()
     }
 
@@ -115,7 +117,7 @@ where
         (**self).code()
     }
 
-    fn detail(&self) -> Option<String> {
+    fn detail(&self) -> Option<Cow<'_, str>> {
         (**self).detail()
     }
 

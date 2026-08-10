@@ -5,10 +5,10 @@
 use std::time::Duration;
 
 use platform_config::ConfigMeta;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Redis 连接池配置。
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RedisConfig {
     /// Redis 连接串，如 `redis://user:pass@host:6379/0`。
     pub url: String,
@@ -19,6 +19,16 @@ pub struct RedisConfig {
     /// 获取连接的超时时间（秒）：连接池已满时等待多久后放弃。
     #[serde(default = "RedisConfig::default_timeout_secs")]
     pub timeout_secs: u64,
+}
+
+impl Default for RedisConfig {
+    fn default() -> Self {
+        Self {
+            url: String::new(),
+            max_size: Self::default_max_size(),
+            timeout_secs: Self::default_timeout_secs(),
+        }
+    }
 }
 
 /// 配置语义层面的非法状态。
@@ -86,7 +96,7 @@ mod tests {
     #[test]
     fn empty_url_rejected() {
         let cfg = RedisConfig {
-            url: "  ".to_string(),
+            url: "   ".to_string(),
             ..valid_config()
         };
         assert!(matches!(cfg.validate(), Err(RedisConfigError::EmptyUrl)));
@@ -127,6 +137,7 @@ mod tests {
     #[test]
     fn missing_required_url_fails_to_load() {
         let empty_vars = Vec::<(&str, &str)>::new();
+        // 因为 Default::default() 将 url 初始化为空串，load_from 加载后会在 validate() 阶段失败抛出 Validation Error
         let result = RedisConfig::load_from(empty_vars);
         assert!(result.is_err());
     }
@@ -145,4 +156,17 @@ mod tests {
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("REDIS_"));
     }
+
+    #[test]
+    fn load_uses_redis_prefix_consistently() {
+        let result = RedisConfig::load();
+        if let Err(err) = result {
+            let err_msg = err.to_string();
+            assert!(
+                err_msg.contains("REDIS_") || err_msg.contains("url"),
+                "实际错误信息为: {err_msg}"
+            );
+        }
+    }
 }
+

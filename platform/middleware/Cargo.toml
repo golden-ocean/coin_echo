@@ -6,13 +6,20 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+# 内部
+platform_kernel = { workspace = true }
+platform_config = { workspace = true }
+platform_security = { workspace = true }
+# 框架
+axum = { workspace = true }
+# 异步
+tokio = { workspace = true }
 # 序列化
 serde = { workspace = true }
-
+serde_json = { workspace = true }
 # 中间件
 tower = { version = "0.5", features = ["util", "limit", "timeout"] }
 tower-http = { version = "0.7", features = [
-    "trace",
     "request-id",
     "cors",
     "compression-full",
@@ -21,6 +28,8 @@ tower-http = { version = "0.7", features = [
     "catch-panic",
     "set-header",
     "sensitive-headers",
+    "trace",
+
 ] }
 governor = { version = "0.10" }
 tower_governor = { version = "0.8" }
@@ -29,9 +38,13 @@ http = { version = "1.4" }
 http-body = { version = "1.1" }
 http-body-util = { version = "0.1" }
 bytes = { version = "1.12" }
+dashmap = { version = "6.2.1" }
 
 # 日志
 tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

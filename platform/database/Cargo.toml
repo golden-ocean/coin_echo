@@ -12,14 +12,12 @@ platform_config = { workspace = true }
 
 # 异步
 tokio = { workspace = true }
-
 # 数据库
 sqlx = { workspace = true }
 # 错误
 thiserror = { workspace = true }
 # 序列化
 serde = { workspace = true }
-
 
 [dev-dependencies]
 

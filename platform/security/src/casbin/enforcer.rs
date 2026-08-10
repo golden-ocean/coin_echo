@@ -33,11 +33,11 @@ impl CasbinEnforcer {
     /// `config` 上、无法满足内部 `Box<dyn Model>`/`Box<dyn Adapter>` 要求的
     /// `'static`。`DefaultModel::from_file`/`FileAdapter::new` 各自把文件
     /// 内容/路径读进自己拥有的数据，天然满足 `'static`。
-    pub async fn new(config: &CasbinConfig) -> Result<Self, CasbinError> {
-        let model = DefaultModel::from_file(config.model_path.clone())
+    pub async fn new(cfg: &CasbinConfig) -> Result<Self, CasbinError> {
+        let model = DefaultModel::from_file(&cfg.model_path)
             .await
             .map_err(|e| CasbinError::InitFailed(e.to_string()))?;
-        let adapter = FileAdapter::new(config.policy_path.clone());
+        let adapter = FileAdapter::new(cfg.policy_path.clone());
 
         let enforcer = Enforcer::new(model, adapter)
             .await

@@ -1,11 +1,10 @@
-use std::sync::Once;
-
+use figment::{Figment, providers::Env};
 use serde::de::DeserializeOwned;
+use std::sync::Once;
 
 static DOTENV_INIT: Once = Once::new();
 
 /// 加载本地 `.env` 文件到进程环境变量（若存在）。
-/// 建议在 main() 函数的最开头调用一次。
 pub fn load_dotenv_if_present() {
     DOTENV_INIT.call_once(|| {
         let _ = dotenvy::dotenv();
@@ -15,13 +14,9 @@ pub fn load_dotenv_if_present() {
 /// 配置加载错误。
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
-    #[error("加载配置失败（前缀: {prefix}）：{source}")]
-    Load {
-        prefix: String,
-        #[source]
-        source: envy::Error,
-    },
-    /// 语义校验失败（端口为 0、超时时间不合法等）
+    #[error("配置加载失败：{0}")]
+    Load(#[from] figment::Error),
+
     #[error("配置校验失败（前缀: {prefix}）：{source}")]
     Validation {
         prefix: String,
@@ -30,31 +25,27 @@ pub enum ConfigError {
     },
 }
 
-pub trait ConfigMeta: Sized {
+pub trait ConfigMeta: Sized + DeserializeOwned {
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// 环境变量前缀（如 "SERVER_"、"DATABASE_"）
+    /// 环境变量前缀（如 "SERVER_"、"DATABASE_"、"MIDDLEWARE_"）
     fn prefix() -> &'static str;
 
     /// 业务语义校验
     fn validate(&self) -> Result<(), Self::Error>;
 
-    /// 自动加载 + 校验（统一捕获并附带 prefix 信息）
-    fn load() -> Result<Self, ConfigError>
-    where
-        Self: serde::de::DeserializeOwned,
-    {
+    /// 自动从环境变量加载 + 校验（基于 Figment）
+    fn load() -> Result<Self, ConfigError> {
         let prefix = Self::prefix();
 
-        // 1. 反序列化：若失败，记录具体的 prefix
-        let cfg: Self = envy::prefixed(prefix)
-            .from_env()
-            .map_err(|source| ConfigError::Load {
-                prefix: prefix.to_string(),
-                source,
-            })?;
+        let figment = Figment::new().merge(
+            Env::prefixed(prefix)
+                .split("__")
+                .map(|key| key.as_str().to_lowercase().into()),
+        );
 
-        // 2. 自自我校验：若失败，将具体业务 Error 打包并附带 prefix
+        let cfg: Self = figment.extract()?;
+
         cfg.validate().map_err(|source| ConfigError::Validation {
             prefix: prefix.to_string(),
             source: Box::new(source),
@@ -66,18 +57,32 @@ pub trait ConfigMeta: Sized {
     /// 【专供测试/特定场景】从内存 KV 迭代器加载并完成自动校验
     fn load_from<I, K, V>(iter: I) -> Result<Self, ConfigError>
     where
-        Self: DeserializeOwned,
         I: IntoIterator<Item = (K, V)>,
         K: Into<String>,
         V: Into<String>,
     {
         let prefix = Self::prefix();
-        let cfg: Self = envy::prefixed(prefix)
-            .from_iter(iter.into_iter().map(|(k, v)| (k.into(), v.into())))
-            .map_err(|source| ConfigError::Load {
-                prefix: prefix.to_string(),
-                source,
-            })?;
+        let mut figment = Figment::new();
+
+        for (k, v) in iter {
+            let key_str: String = k.into();
+            let val_str: String = v.into();
+
+            if let Some(stripped) = key_str.strip_prefix(prefix) {
+                let figment_key = stripped.to_lowercase().replace("__", ".");
+
+                // 尝试把 "5" 转换为 5 再 merge
+                if let Ok(num) = val_str.parse::<u64>() {
+                    figment = figment.merge((figment_key, num));
+                } else if let Ok(b) = val_str.parse::<bool>() {
+                    figment = figment.merge((figment_key, b));
+                } else {
+                    figment = figment.merge((figment_key, val_str));
+                }
+            }
+        }
+
+        let cfg: Self = figment.extract()?;
 
         cfg.validate().map_err(|source| ConfigError::Validation {
             prefix: prefix.to_string(),

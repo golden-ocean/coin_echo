@@ -4,6 +4,8 @@
 //! `#[from]` 委托，不重复 `match` 一遍语义分类——避免同一份"哪个错误属于
 //! 什么 kind"的知识分散在两处、后续漂移。
 
+use std::borrow::Cow;
+
 use platform_kernel::error::{ErrorKind, ErrorMeta, FieldError};
 
 use crate::casbin::CasbinError;
@@ -37,7 +39,7 @@ impl ErrorMeta for SecurityError {
         }
     }
 
-    fn detail(&self) -> Option<String> {
+    fn detail(&self) -> Option<Cow<'_, str>> {
         match self {
             Self::Jwt(e) => e.detail(),
             Self::Password(e) => e.detail(),
@@ -65,4 +67,3 @@ mod tests {
         assert_eq!(err.code(), JwtError::Expired.code());
     }
 }
-

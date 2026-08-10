@@ -9,6 +9,8 @@
 //! - instance<- 触发错误的请求路径，由中间件统一回填
 //! - code/trace_id/errors 为团队自定义扩展字段
 
+use std::borrow::Cow;
+
 use crate::error::{ErrorKind, ErrorMeta, FieldError};
 use serde::Serialize;
 
@@ -16,14 +18,14 @@ use serde::Serialize;
 pub struct ProblemDetails {
     #[serde(rename = "type")]
     pub type_: String,
-    pub title: String,
+    pub title: &'static str,
     pub status: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
     /// 触发错误的请求路径，由中间件统一回填。
     pub instance: String,
     /// 内部错误码全串，即 `ErrorMeta::code()` 的原样输出。
-    pub code: String,
+    pub code: &'static str,
     /// 链路追踪 ID，由中间件统一回填。
     pub trace_id: String,
     /// 请求体字段级校验错误明细，仅在存在字段错误时有值。
@@ -74,15 +76,15 @@ impl ProblemDetails {
         let fields = err.fields();
         Self {
             type_: format!("urn:{namespace}:error:{}", err.code()),
-            title: title_of(kind).to_string(),
+            title: title_of(kind),
             status: status_of(kind),
             detail: if kind.is_detail_safe_to_expose() {
-                err.detail()
+                err.detail().map(Cow::into_owned)
             } else {
                 None
             },
             instance,
-            code: err.code().to_string(),
+            code: err.code(),
             trace_id,
             errors: (!fields.is_empty()).then_some(fields),
         }
@@ -133,8 +135,8 @@ mod tests {
             self.code
         }
 
-        fn detail(&self) -> Option<String> {
-            self.detail.clone()
+        fn detail(&self) -> Option<Cow<'_, str>> {
+            self.detail.as_deref().map(Cow::Borrowed)
         }
 
         fn fields(&self) -> Vec<FieldError> {
