@@ -1,5 +1,4 @@
-//! 全局中间件配置，逐项可开关，来源于环境变量（前缀 `MIDDLEWARE_`）。
-//!
+//! 全局中间件配置，来源于环境变量（前缀 `MIDDLEWARE_`）。
 //! # 归属说明
 //!
 //! 放在 `platform-middleware` 内部而非 `apps/server`——遵循项目一贯
@@ -26,11 +25,6 @@ use crate::{cors::CorsConfig, rate_limit::RateLimitConfig};
 /// 全局中间件配置。
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct MiddlewareConfig {
-    /// 是否生成/传播 `x-request-id` 请求头，以及安装
-    /// [`crate::context::RequestContextLayer`]（两者共用一个开关：
-    /// context 依赖 request_id 已经写入请求头，关掉 request_id 时
-    /// context 也没有意义继续安装）。
-
     /// 单个请求的最长处理时间（秒），超过后服务端主动中断。
     #[serde(default = "MiddlewareConfig::default_timeout_secs")]
     pub timeout_secs: u64,

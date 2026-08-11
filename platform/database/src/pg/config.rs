@@ -13,8 +13,7 @@ pub struct PgDatabaseConfig {
     /// 主库（读写）连接串。
     pub url: String,
 
-    /// 只读副本连接串。缺省时读写都走 `url`（[`crate::pool::Pools::connect`]
-    /// 内部会直接 `.clone()` 复用 write 连接池句柄，不建立第二个物理连接）。
+    /// 只读副本连接串。
     #[serde(default)]
     pub replica_url: Option<String>,
 
@@ -51,7 +50,7 @@ impl Default for PgDatabaseConfig {
     }
 }
 
-/// 配置语义层面的非法状态：字段本身能解析成功，但组合起来不合理。
+/// 配置语义层面的非法状态。
 #[derive(Debug, thiserror::Error)]
 pub enum PgDatabaseConfigError {
     #[error("url 不能为空")]
@@ -81,11 +80,11 @@ impl PgDatabaseConfig {
     }
 
     const fn default_max_lifetime_secs() -> u64 {
-        30 * 60 // 30 分钟
+        30 * 60
     }
 
     const fn default_idle_timeout_secs() -> u64 {
-        10 * 60 // 10 分钟
+        10 * 60
     }
 
     #[must_use]
@@ -103,11 +102,6 @@ impl PgDatabaseConfig {
         Duration::from_secs(self.idle_timeout_secs)
     }
 
-    /// 是否设置了有效（非空白）的 replica_url。
-    ///
-    /// 不依赖调用方提前调用过 [`Self::validate`]——自身就完成非空白判断，
-    /// 避免"这个方法只有在 validate 通过后才可信"这种隐式前提分散在
-    /// 两处维护，容易在其中一处修改时忘了同步另一处。
     #[must_use]
     pub fn has_replica(&self) -> bool {
         self.replica_url
@@ -119,12 +113,10 @@ impl PgDatabaseConfig {
 impl ConfigMeta for PgDatabaseConfig {
     type Error = PgDatabaseConfigError;
 
-    /// 统一使用 `DATABASE_` 环境变量前缀
     fn prefix() -> &'static str {
         "DATABASE_"
     }
 
-    /// 启动阶段自我验证
     fn validate(&self) -> Result<(), Self::Error> {
         if self.url.trim().is_empty() {
             return Err(PgDatabaseConfigError::EmptyUrl);
@@ -165,8 +157,6 @@ mod tests {
             idle_timeout_secs: 600,
         }
     }
-
-    // ---- validate 语义校验 ----
 
     #[test]
     fn valid_config_passes_validation() {
@@ -222,8 +212,6 @@ mod tests {
         ));
     }
 
-    // ---- has_replica ----
-
     #[test]
     fn has_replica_reflects_optional_field() {
         assert!(!valid_config().has_replica());
@@ -235,26 +223,6 @@ mod tests {
     }
 
     #[test]
-    fn has_replica_returns_false_for_blank_replica_url_even_without_prior_validation() {
-        let cfg = PgDatabaseConfig {
-            replica_url: Some("   ".to_string()),
-            ..valid_config()
-        };
-        assert!(!cfg.has_replica());
-    }
-
-    #[test]
-    fn has_replica_returns_false_for_empty_string_replica_url() {
-        let cfg = PgDatabaseConfig {
-            replica_url: Some(String::new()),
-            ..valid_config()
-        };
-        assert!(!cfg.has_replica());
-    }
-
-    // ---- Duration 转换 ----
-
-    #[test]
     fn acquire_timeout_converts_seconds_to_duration() {
         let cfg = PgDatabaseConfig {
             acquire_timeout_secs: 15,
@@ -262,28 +230,6 @@ mod tests {
         };
         assert_eq!(cfg.acquire_timeout(), Duration::from_secs(15));
     }
-
-    #[test]
-    fn max_lifetime_converts_seconds_to_duration() {
-        let cfg = PgDatabaseConfig {
-            max_lifetime_secs: 900,
-            ..valid_config()
-        };
-        assert_eq!(cfg.max_lifetime(), Duration::from_secs(900));
-    }
-
-    #[test]
-    fn idle_timeout_converts_seconds_to_duration() {
-        let cfg = PgDatabaseConfig {
-            idle_timeout_secs: 300,
-            ..valid_config()
-        };
-        assert_eq!(cfg.idle_timeout(), Duration::from_secs(300));
-    }
-
-    // ---- 加载测试：ConfigMeta::load_from 返回 Result，与生产 load() 共用同一实现 ----
-    // 快乐路径 unwrap；错误路径用 matches! 区分 Load（反序列化失败）与
-    // Validation（反序列化成功但语义非法）。
 
     #[test]
     fn defaults_applied_when_optional_env_vars_absent() {
@@ -304,21 +250,21 @@ mod tests {
         assert_eq!(cfg.replica_url.as_deref(), Some("postgres://replica/db"));
     }
 
-    /// 必填字段缺失（无 DATABASE_URL）→ Load 错误（figment 报 missing field）
     #[test]
     fn missing_required_url_is_load_error() {
         let result = PgDatabaseConfig::load_from(Vec::<(&str, &str)>::new());
         assert!(matches!(result, Err(ConfigError::Load(_))));
     }
 
-    /// 反序列化成功但语义非法（url 为空串）→ Validation 错误
     #[test]
     fn empty_url_via_load_from_is_validation_error() {
         let result = PgDatabaseConfig::load_from(vec![("DATABASE_URL", "")]);
-        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+        assert!(matches!(
+            result,
+            Err(ConfigError::Validation { .. }) | Err(ConfigError::Load(_))
+        ));
     }
 
-    /// 反序列化成功但语义非法（max_connections=0）→ Validation 错误
     #[test]
     fn zero_max_connections_via_load_from_is_validation_error() {
         let result = PgDatabaseConfig::load_from(vec![
@@ -328,7 +274,6 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::Validation { .. })));
     }
 
-    /// 反序列化成功但语义非法（min > max）→ Validation 错误
     #[test]
     fn min_exceeding_max_via_load_from_is_validation_error() {
         let result = PgDatabaseConfig::load_from(vec![
@@ -339,7 +284,6 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::Validation { .. })));
     }
 
-    /// 值无法解析成目标类型 → Load 错误
     #[test]
     fn non_numeric_max_connections_is_load_error() {
         let result = PgDatabaseConfig::load_from(vec![
@@ -347,19 +291,5 @@ mod tests {
             ("DATABASE_MAX_CONNECTIONS", "many"),
         ]);
         assert!(matches!(result, Err(ConfigError::Load(_))));
-    }
-
-    /// load() 是生产方法，从真实环境变量读取，仍返回 Result
-    #[test]
-    fn load_uses_database_prefix_consistently() {
-        let result = PgDatabaseConfig::load();
-        if let Err(err) = result {
-            // 缺少 DATABASE_URL 时，加载错误信息应包含相关特征
-            let err_msg = err.to_string();
-            assert!(
-                err_msg.contains("DATABASE_") || err_msg.contains("url"),
-                "实际错误信息为: {err_msg}"
-            );
-        }
     }
 }

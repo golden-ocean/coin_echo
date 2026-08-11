@@ -126,9 +126,7 @@ mod tests {
         assert_eq!(cfg.timeout(), Duration::from_secs(10));
     }
 
-    // ---- 加载测试：load_from 返回 Result，与生产 load() 共用同一实现 ----
-    // 快乐路径 unwrap；错误路径用 matches! 区分 Load（反序列化失败）与
-    // Validation（反序列化成功但语义非法）。
+    // ---- 加载测试 ----
 
     #[test]
     fn defaults_applied_when_optional_env_vars_absent() {
@@ -151,7 +149,6 @@ mod tests {
         assert_eq!(cfg.timeout_secs, 10);
     }
 
-    /// 变量名大小写不敏感（前缀匹配与小写归一化后等价）
     #[test]
     fn env_keys_are_case_insensitive() {
         let cfg = RedisConfig::load_from(vec![
@@ -163,32 +160,28 @@ mod tests {
         assert_eq!(cfg.max_size, 8);
     }
 
-    /// 非 REDIS_ 前缀的键被忽略，不影响默认值
     #[test]
     fn non_prefixed_keys_are_ignored() {
         let cfg = RedisConfig::load_from(vec![
             ("REDIS_URL", "redis://localhost/0"),
-            ("CACHE_MAX_SIZE", "9999"), // 非 REDIS_ 前缀 → 忽略
+            ("CACHE_MAX_SIZE", "9999"),
         ])
         .unwrap();
-        assert_eq!(cfg.max_size, 16); // 默认值未被污染
+        assert_eq!(cfg.max_size, 16);
     }
 
-    /// 必填字段缺失（无 REDIS_URL）→ Load 错误（figment 报 missing field）
     #[test]
     fn missing_required_url_is_load_error() {
         let result = RedisConfig::load_from(Vec::<(&str, &str)>::new());
         assert!(matches!(result, Err(ConfigError::Load(_))));
     }
 
-    /// 反序列化成功但语义非法（url 为空串）→ Validation 错误
     #[test]
     fn empty_url_via_load_from_is_validation_error() {
         let result = RedisConfig::load_from(vec![("REDIS_URL", "")]);
         assert!(matches!(result, Err(ConfigError::Validation { .. })));
     }
 
-    /// 反序列化成功但语义非法（max_size=0）→ Validation 错误
     #[test]
     fn zero_max_size_via_load_from_is_validation_error() {
         let result = RedisConfig::load_from(vec![
@@ -198,7 +191,6 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::Validation { .. })));
     }
 
-    /// 值无法解析成目标类型 → Load 错误
     #[test]
     fn non_numeric_max_size_is_load_error() {
         let result = RedisConfig::load_from(vec![
@@ -208,7 +200,6 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::Load(_))));
     }
 
-    /// load() 是生产方法，从真实环境变量读取，仍返回 Result
     #[test]
     fn load_uses_redis_prefix_consistently() {
         let result = RedisConfig::load();

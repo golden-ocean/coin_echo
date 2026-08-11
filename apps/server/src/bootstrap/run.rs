@@ -6,9 +6,8 @@ use std::sync::Arc;
 use platform_config::ConfigMeta;
 use platform_telemetry::TelemetryConfig;
 
-use crate::bootstrap::{infra, shutdown};
+use crate::bootstrap::{app, infra, shutdown};
 use crate::config::ServerConfig;
-use crate::routes;
 
 pub async fn run() -> anyhow::Result<()> {
     platform_config::load_dotenv_if_present();
@@ -21,7 +20,7 @@ pub async fn run() -> anyhow::Result<()> {
     tracing::info!("基础设施初始化完成");
 
     let server_cfg = ServerConfig::load()?;
-    let app = routes::build(Arc::clone(&state));
+    let app = app::build_app(Arc::clone(&state));
 
     let listener = tokio::net::TcpListener::bind(server_cfg.socket_addr()).await?;
     tracing::info!(addr = %server_cfg.socket_addr(), "服务器开始监听");

@@ -64,7 +64,6 @@ mod tests {
     use platform_config::ConfigMeta;
 
     /// 通过配置层构造一个验证过的合法配置。
-    /// `ConfigMeta::load_from` 返回 `Result`，这里的输入恒合法，直接 unwrap。
     fn valid_test_config(url: &str) -> RedisConfig {
         RedisConfig::load_from(vec![
             ("REDIS_URL", url),
@@ -83,8 +82,6 @@ mod tests {
 
     #[tokio::test]
     async fn acquiring_connection_to_unreachable_host_returns_acquire_failed_error() {
-        // URL 格式合法，但目标地址不可达：错误发生在获取连接（真正尝试 TCP 连接）阶段，
-        // 而不是 connect() 构造池本身——deadpool 的连接池是惰性的，构造阶段不会立即连接后端。
         let config = valid_test_config("redis://127.0.0.1:1/0");
         let pool = RedisPool::connect(&config).unwrap();
         let result = pool.get_connection().await;

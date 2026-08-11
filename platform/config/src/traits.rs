@@ -1,4 +1,4 @@
-use figment::Figment;
+use config::Config;
 use serde::de::DeserializeOwned;
 use std::sync::Once;
 
@@ -15,7 +15,7 @@ pub fn load_dotenv_if_present() {
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("配置加载失败：{0}")]
-    Load(#[from] figment::Error),
+    Load(#[from] config::ConfigError),
 
     #[error("配置校验失败（前缀: {prefix}）：{source}")]
     Validation {
@@ -29,13 +29,12 @@ pub enum ConfigError {
 ///
 /// # 变量命名规则
 ///
-/// - 变量名 = `前缀 + 字段路径`，如 `SERVER_PORT`、`MIDDLEWARE_TIMEOUT_SECS`。
+/// - 变量名 = `前缀（大写）+ 字段路径`，如 `SERVER_PORT`、`MIDDLEWARE_TIMEOUT_SECS`。
 /// - **嵌套层级用双下划线 `__`**：`cors.allowed_origins` 对应
-///   `MIDDLEWARE_CORS__ALLOWED_ORIGINS`；平铺字段用单下划线，不要写成
-///   `MIDDLEWARE_REQUEST_ID__ENABLED`（那会被解析成 `request_id.enabled`
-///   这个不存在的嵌套路径而静默忽略）。
-/// - 值交给 figment 解析（与 `Env` 相同）：`true`/`false` → bool、整数 →
-///   数值、含小数点 → 浮点、其余 → 字符串。
+///   `MIDDLEWARE_CORS__ALLOWED_ORIGINS`；平铺字段用单下划线。
+/// - 值在反序列化时按目标字段类型强制转换（`config-rs` 行为）：
+///   数字字符串 → `u64`/`i64`/`f64` 字段自动解析；`"true"`/`"false"` → `bool`；
+///   纯数字字符串 → `String` 字段**保持原样**（解决了 figment 的类型提前定型问题）。
 pub trait ConfigMeta: Sized + DeserializeOwned {
     type Error: std::error::Error + Send + Sync + 'static;
 
@@ -46,19 +45,14 @@ pub trait ConfigMeta: Sized + DeserializeOwned {
     fn validate(&self) -> Result<(), Self::Error>;
 
     /// 生产路径：从真实环境变量加载 + 校验。
-    ///
-    /// 直接委托 [`ConfigMeta::load_from`]——生产与测试共用同一实现，
-    /// 不存在两套逻辑漂移的可能。
     fn load() -> Result<Self, ConfigError> {
-        Self::load_from(std::env::vars_os().map(|(k, v)| {
-            (
-                k.to_string_lossy().into_owned(),
-                v.to_string_lossy().into_owned(),
-            )
-        }))
+        Self::load_from(std::env::vars())
     }
 
-    /// 唯一加载实现：前缀剥离 → 小写 → `__` 表示嵌套 → figment 解析值。
+    /// 唯一加载实现：前缀剥离 → 小写 → `__` 表示嵌套 → config-rs 反序列化。
+    ///
+    /// 值全部以原始字符串注入 `ConfigBuilder`，类型转换交给 `try_deserialize()`
+    /// 按目标字段类型处理——避免了"提前推断数值类型导致 String 字段拒收"的问题。
     fn load_from<I, K, V>(iter: I) -> Result<Self, ConfigError>
     where
         I: IntoIterator<Item = (K, V)>,
@@ -67,12 +61,11 @@ pub trait ConfigMeta: Sized + DeserializeOwned {
     {
         let prefix = Self::prefix();
 
-        let mut figment = Figment::new();
+        let mut builder = Config::builder();
+
         for (k, v) in iter {
             let (k, v) = (k.into(), v.into());
-
-            // 先绑定再借用：`to_ascii_uppercase()` 的临时 String 必须活过
-            // 整个循环体，否则 `stripped`（借用自它）会悬垂。
+            // 前缀匹配大小写不敏感：先统一大写再 strip
             let upper = k.to_ascii_uppercase();
             let Some(stripped) = upper.strip_prefix(prefix) else {
                 continue;
@@ -81,20 +74,13 @@ pub trait ConfigMeta: Sized + DeserializeOwned {
                 continue;
             }
 
-            // `__` → `.`：figment 的元组 merge 会把点号键组装成嵌套 dict
-            let figment_key = stripped.to_lowercase().replace("__", ".");
-            // - 值交给 figment 解析（与 `Env` 相同）：`true`/`false` → bool、整数 →
-            //   数值、含小数点 → 浮点、其余 → 字符串。
-            // - **限制**：纯数字字符串会被推断为数值，因此类型为 `String` 的字段
-            //   收不到纯数字配置值（会报类型不匹配）——这是无类型 env 值的固有取舍。
-            let value: figment::value::Value = v
-                .parse()
-                .unwrap_or_else(|_| unreachable!("figment 值解析不失败"));
-
-            figment = figment.merge((figment_key, value));
+            // `__` → `.`：config-rs 用点号表示嵌套层级
+            let config_key = stripped.to_lowercase().replace("__", ".");
+            // 值按原始字符串注入，类型由目标字段决定
+            builder = builder.set_override(&config_key, v)?;
         }
 
-        let cfg: Self = figment.extract().map_err(ConfigError::Load)?;
+        let cfg: Self = builder.build()?.try_deserialize()?;
 
         cfg.validate().map_err(|source| ConfigError::Validation {
             prefix,
@@ -122,6 +108,8 @@ mod tests {
         ratio: f64,
         #[serde(default)]
         name: String,
+        #[serde(default)]
+        secret_numeric_string: String,
         #[serde(default)]
         nested: SampleNested,
     }
@@ -188,7 +176,7 @@ mod tests {
             .collect()
     }
 
-    /// 前缀剥离 + 平铺键映射 + figment 类型解析（bool/u64/f64/String）
+    /// 前缀剥离 + 平铺键映射 + 值类型按目标字段转换
     #[test]
     fn strips_prefix_and_parses_flat_key_value_types() {
         let cfg = SampleConfig::load_from(vars(&[
@@ -199,11 +187,23 @@ mod tests {
         ]))
         .unwrap();
 
-        assert_eq!(cfg.flag, false);
+        assert!(!cfg.flag);
         assert_eq!(cfg.count, 42);
         assert_eq!(cfg.ratio, 0.5);
         assert_eq!(cfg.name, "hello");
         assert_eq!(cfg.nested, SampleNested::default());
+    }
+
+    /// 纯数字字符串正确反序列化到 String 字段（config-rs 的关键优势）
+    #[test]
+    fn numeric_string_deserializes_into_string_field() {
+        let cfg = SampleConfig::load_from(vars(&[(
+            "SAMPLE_SECRET_NUMERIC_STRING",
+            "12345678901234567890",
+        )]))
+        .unwrap();
+
+        assert_eq!(cfg.secret_numeric_string, "12345678901234567890");
     }
 
     /// 双下划线 = 嵌套层级
