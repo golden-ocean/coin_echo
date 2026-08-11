@@ -107,6 +107,7 @@ impl ConfigMeta for JwtConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigError;
 
     fn valid_config() -> JwtConfig {
         JwtConfig {
@@ -118,7 +119,7 @@ mod tests {
         }
     }
 
-    // ---- validate() 语义校验，直接调用 ConfigMeta::validate ----
+    // ---- validate() 语义校验 ----
 
     #[test]
     fn valid_config_passes_validation() {
@@ -187,45 +188,84 @@ mod tests {
         ));
     }
 
-    // ---- ConfigMeta::load_from：真正调用 trait 提供的加载+校验一体流程 ----
+    // ---- 加载测试：ConfigMeta::load_from 返回 Result，与生产 load() 共用同一实现 ----
 
     #[test]
     fn load_from_applies_defaults_when_optional_vars_absent() {
-        let vars = vec![
-            ("JWT_ACCESS_SECRET".to_string(), "a".repeat(32)),
-            ("JWT_REFRESH_SECRET".to_string(), "b".repeat(32)),
-        ];
-        let cfg = JwtConfig::load_from(vars).unwrap();
+        let access_secret = "a".repeat(32);
+        let refresh_secret = "b".repeat(32);
+        let cfg = JwtConfig::load_from(vec![
+            ("JWT_ACCESS_SECRET", access_secret.as_str()),
+            ("JWT_REFRESH_SECRET", refresh_secret.as_str()),
+        ])
+        .unwrap();
         assert_eq!(cfg.access_expire_minutes, 15);
         assert_eq!(cfg.refresh_expire_hours, 720);
         assert_eq!(cfg.issuer, "app");
     }
 
+    /// 全字段都能从环境变量读取
     #[test]
-    fn load_from_fails_when_required_secret_missing() {
-        let vars = vec![("JWT_ACCESS_SECRET".to_string(), "a".repeat(32))];
-        let result = JwtConfig::load_from(vars);
-        assert!(matches!(
-            result,
-            Err(platform_config::ConfigError::Load { .. })
-        ));
+    fn load_from_reads_all_fields() {
+        let access_secret = "a".repeat(32);
+        let refresh_secret = "b".repeat(32);
+        let cfg = JwtConfig::load_from(vec![
+            ("JWT_ACCESS_SECRET", access_secret.as_str()),
+            ("JWT_ACCESS_EXPIRE_MINUTES", "10"),
+            ("JWT_REFRESH_SECRET", refresh_secret.as_str()),
+            ("JWT_REFRESH_EXPIRE_HOURS", "48"),
+            ("JWT_ISSUER", "coin-echo"),
+        ])
+        .unwrap();
+        assert_eq!(cfg.access_expire_minutes, 10);
+        assert_eq!(cfg.refresh_expire_hours, 48);
+        assert_eq!(cfg.issuer, "coin-echo");
     }
 
-    /// 关键回归测试：验证 `load_from` 不仅反序列化成功，还真的调用了
-    /// `validate()`——若 trait 默认实现里漏掉了校验这一步（比如复制粘贴
-    /// 时被误删），这条测试能捕获到，而不是像之前 `error_message_
-    /// includes_prefix_for_diagnosis` 那样绕开被测函数本身。
+    /// 必填字段缺失（缺 refresh_secret）→ Load 错误
+    #[test]
+    fn load_from_fails_when_required_secret_missing() {
+        let access_secret = "a".repeat(32);
+        let result = JwtConfig::load_from(vec![("JWT_ACCESS_SECRET", access_secret.as_str())]);
+        assert!(matches!(result, Err(ConfigError::Load(_))));
+    }
+
+    /// 反序列化成功但语义非法（access_secret 过短）→ Validation 错误
     #[test]
     fn load_from_rejects_semantically_invalid_config_even_if_deserializable() {
-        let vars = vec![
-            ("JWT_ACCESS_SECRET".to_string(), "short".to_string()), // 反序列化成功，但语义非法
-            ("JWT_REFRESH_SECRET".to_string(), "b".repeat(32)),
-        ];
-        let result = JwtConfig::load_from(vars);
-        assert!(matches!(
-            result,
-            Err(platform_config::ConfigError::Validation { .. })
-        ));
+        let refresh_secret = "b".repeat(32);
+        let result = JwtConfig::load_from(vec![
+            ("JWT_ACCESS_SECRET", "short"),
+            ("JWT_REFRESH_SECRET", refresh_secret.as_str()),
+        ]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 变量名大小写不敏感
+    #[test]
+    fn env_keys_are_case_insensitive() {
+        let access_secret = "a".repeat(32);
+        let refresh_secret = "b".repeat(32);
+        let cfg = JwtConfig::load_from(vec![
+            ("jwt_access_secret", access_secret.as_str()),
+            ("jwt_refresh_secret", refresh_secret.as_str()),
+        ])
+        .unwrap();
+        assert_eq!(cfg.issuer, "app");
+    }
+
+    /// 非 JWT_ 前缀的键被忽略
+    #[test]
+    fn non_prefixed_keys_are_ignored() {
+        let access_secret = "a".repeat(32);
+        let refresh_secret = "b".repeat(32);
+        let cfg = JwtConfig::load_from(vec![
+            ("JWT_ACCESS_SECRET", access_secret.as_str()),
+            ("JWT_REFRESH_SECRET", refresh_secret.as_str()),
+            ("AUTH_ISSUER", "evil"),
+        ])
+        .unwrap();
+        assert_eq!(cfg.issuer, "app"); // 未被 AUTH_ 键污染
     }
 
     #[test]
@@ -233,4 +273,3 @@ mod tests {
         assert_eq!(JwtConfig::prefix(), "JWT_");
     }
 }
-

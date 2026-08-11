@@ -65,10 +65,6 @@ impl ConfigMeta for MiddlewareConfig {
         "MIDDLEWARE_"
     }
 
-    /// 目前没有跨字段的语义约束需要校验（各布尔开关互相独立，
-    /// timeout/body_limit 是纯数值，取值范围由业务判断，不在这里
-    /// 强制限定）。使用 `Infallible` 表示"这个校验永远不会失败"，
-    /// 比返回一个没有任何变体的空枚举更符合 Rust 惯例。
     fn validate(&self) -> Result<(), Self::Error> {
         Ok(())
     }
@@ -90,70 +86,58 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_enables_everything_with_sane_thresholds() {
+    fn default_has_sane_thresholds() {
         let config = MiddlewareConfig::default();
         assert_eq!(config.timeout_secs, 30);
         assert_eq!(config.body_limit_bytes, 2 * 1024 * 1024);
+        assert_eq!(config.cors.allowed_origins, "");
+        assert_eq!(config.rate_limit.max_requests, 100);
+        assert_eq!(config.rate_limit.window_secs, 1);
     }
 
+    #[test]
+    fn load_from_reads_flat_and_nested_fields() {
+        let vars = vec![
+            ("MIDDLEWARE_TIMEOUT_SECS", "10"),
+            ("MIDDLEWARE_BODY_LIMIT_BYTES", "1048576"),
+            ("MIDDLEWARE_CORS__ALLOWED_ORIGINS", "http://x"),
+            ("MIDDLEWARE_RATE_LIMIT__MAX_REQUESTS", "50"),
+            ("MIDDLEWARE_RATE_LIMIT__WINDOW_SECS", "30"),
+        ];
+        let config = MiddlewareConfig::load_from(vars).unwrap();
+        assert_eq!(config.timeout_secs, 10);
+        assert_eq!(config.body_limit_bytes, 1048576);
+        assert_eq!(config.cors.allowed_origins, "http://x");
+        assert_eq!(config.rate_limit.max_requests, 50);
+        assert_eq!(config.rate_limit.window_secs, 30);
+    }
+
+    /// 空输入 → 全部默认值
     #[test]
     fn load_from_applies_defaults_when_no_vars_present() {
         let config = MiddlewareConfig::load_from(Vec::<(String, String)>::new()).unwrap();
         assert_eq!(config.timeout_secs, 30);
+        assert_eq!(config.cors.allowed_origins, "");
+        assert_eq!(config.rate_limit.max_requests, 100);
     }
 
+    /// 变量名大小写不敏感
     #[test]
-    fn load_from_respects_individual_toggle_overrides() {
-        let vars = vec![
-            ("MIDDLEWARE_TRACE_ENABLED".to_string(), "false".to_string()),
-            ("MIDDLEWARE_TIMEOUT_SECS".to_string(), "5".to_string()),
-        ];
-        let config = MiddlewareConfig::load_from(vars).unwrap();
+    fn env_keys_are_case_insensitive() {
+        let config = MiddlewareConfig::load_from(vec![("middleware_timeout_secs", "5")]).unwrap();
         assert_eq!(config.timeout_secs, 5);
     }
 
+    /// 非 MIDDLEWARE_ 前缀的键被忽略
     #[test]
-    fn prefix_is_middleware() {
+    fn non_prefixed_keys_are_ignored() {
+        let config = MiddlewareConfig::load_from(vec![("HTTP_TIMEOUT_SECS", "1")]).unwrap();
+        assert_eq!(config.timeout_secs, 30);
+    }
+
+    #[test]
+    fn prefix_is_middleware_and_validate_succeeds() {
         assert_eq!(MiddlewareConfig::prefix(), "MIDDLEWARE_");
-    }
-
-    #[test]
-    fn validate_always_succeeds() {
-        let config = MiddlewareConfig::default();
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn load_from_loads_nested_cors_allowed_origins() {
-        let vars = vec![(
-            // 嵌套层级改用双下划线连接: CORS__ALLOWED_ORIGINS
-            "MIDDLEWARE_CORS__ALLOWED_ORIGINS".to_string(),
-            "https://example.com".to_string(),
-        )];
-        let config = MiddlewareConfig::load_from(vars).unwrap();
-
-        assert_eq!(
-            config.cors.allowed_origins,
-            "https://example.com".to_string()
-        );
-    }
-
-    #[test]
-    fn load_from_loads_nested_rate_limit_params() {
-        let vars = vec![
-            (
-                // RATE_LIMIT__MAX_REQUESTS
-                "MIDDLEWARE_RATE_LIMIT__MAX_REQUESTS".to_string(),
-                "200".to_string(),
-            ),
-            (
-                // RATE_LIMIT__WINDOW_SECS
-                "MIDDLEWARE_RATE_LIMIT__WINDOW_SECS".to_string(),
-                "120".to_string(),
-            ),
-        ];
-        let config = MiddlewareConfig::load_from(vars).unwrap();
-        assert_eq!(config.rate_limit.max_requests, 200);
-        assert_eq!(config.rate_limit.window_secs, 120);
+        assert!(MiddlewareConfig::default().validate().is_ok());
     }
 }

@@ -120,6 +120,7 @@ impl Default for ServerConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigError;
 
     #[test]
     fn valid_config_passes_validation() {
@@ -162,7 +163,7 @@ mod tests {
 
     #[test]
     fn defaults_used_when_loading_empty_kv() {
-        // 使用 load_from 传入空迭代器，验证默认值填充
+        // load_from 与生产 load() 共用同一实现，失败时 unwrap 暴露问题
         let empty_vars: Vec<(&str, &str)> = vec![];
         let cfg = ServerConfig::load_from(empty_vars).unwrap();
 
@@ -174,7 +175,6 @@ mod tests {
 
     #[test]
     fn all_fields_loaded_and_validated_via_load_from() {
-        // 使用 load_from 模拟环境变量 KV 映射输入
         let vars = vec![
             ("SERVER_HOST", "127.0.0.1"),
             ("SERVER_PORT", "9090"),
@@ -189,6 +189,34 @@ mod tests {
         assert_eq!(cfg.read_timeout_secs, 30);
         assert_eq!(cfg.shutdown_grace_secs, 5);
         assert!(cfg.validate().is_ok());
+    }
+
+    /// 变量名大小写不敏感
+    #[test]
+    fn env_keys_are_case_insensitive() {
+        let cfg = ServerConfig::load_from(vec![("server_port", "7070")]).unwrap();
+        assert_eq!(cfg.port, 7070);
+    }
+
+    /// 非 SERVER_ 前缀的键被忽略
+    #[test]
+    fn non_prefixed_keys_are_ignored() {
+        let cfg = ServerConfig::load_from(vec![("OTHER_PORT", "9999")]).unwrap();
+        assert_eq!(cfg.port, 8080);
+    }
+
+    /// 反序列化成功但语义非法 → Validation 错误
+    #[test]
+    fn zero_port_via_load_from_is_validation_error() {
+        let result = ServerConfig::load_from(vec![("SERVER_PORT", "0")]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 值无法解析成目标类型 → Load 错误
+    #[test]
+    fn non_numeric_port_via_load_from_is_load_error() {
+        let result = ServerConfig::load_from(vec![("SERVER_PORT", "not-a-port")]);
+        assert!(matches!(result, Err(ConfigError::Load(_))));
     }
 
     #[test]

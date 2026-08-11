@@ -168,6 +168,7 @@ impl Default for TelemetryConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigError;
 
     // ---- LogFormat::from_str ----
 
@@ -289,13 +290,50 @@ mod tests {
     }
 
     #[test]
+    fn load_from_reads_all_fields() {
+        let cfg = TelemetryConfig::load_from(vec![
+            ("TELEMETRY_LEVEL", "debug"),
+            ("TELEMETRY_FORMAT", "json"),
+            ("TELEMETRY_ANSI", "false"),
+            ("TELEMETRY_EXTRA_DIRECTIVES", "sqlx=warn"),
+            ("TELEMETRY_SERVICE_NAME", "coin-echo"),
+            ("TELEMETRY_SAMPLE_RATIO", "0.5"),
+        ])
+        .unwrap();
+        assert_eq!(cfg.level, "debug");
+        assert_eq!(cfg.format, LogFormat::Json);
+        assert!(!cfg.ansi);
+        assert_eq!(cfg.extra_directives.as_deref(), Some("sqlx=warn"));
+        assert_eq!(cfg.service_name, "coin-echo");
+        assert_eq!(cfg.sample_ratio, 0.5);
+    }
+
+    /// 反序列化成功但语义非法（sample_ratio 越界）→ Validation 错误
+    #[test]
     fn load_from_rejects_invalid_sample_ratio() {
-        let vars = vec![("TELEMETRY_SAMPLE_RATIO".to_string(), "2.0".to_string())];
-        let result = TelemetryConfig::load_from(vars);
-        assert!(matches!(
-            result,
-            Err(platform_config::ConfigError::Validation { .. })
-        ));
+        let result = TelemetryConfig::load_from(vec![("TELEMETRY_SAMPLE_RATIO", "2.0")]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// otel_enabled=true 但缺 endpoint → Validation 错误
+    #[test]
+    fn load_from_rejects_otel_without_endpoint() {
+        let result = TelemetryConfig::load_from(vec![("TELEMETRY_OTEL_ENABLED", "true")]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 变量名大小写不敏感
+    #[test]
+    fn env_keys_are_case_insensitive() {
+        let cfg = TelemetryConfig::load_from(vec![("telemetry_level", "warn")]).unwrap();
+        assert_eq!(cfg.level, "warn");
+    }
+
+    /// 非 TELEMETRY_ 前缀的键被忽略
+    #[test]
+    fn non_prefixed_keys_are_ignored() {
+        let cfg = TelemetryConfig::load_from(vec![("LOG_LEVEL", "error")]).unwrap();
+        assert_eq!(cfg.level, "info"); // 默认值未被污染
     }
 
     #[test]

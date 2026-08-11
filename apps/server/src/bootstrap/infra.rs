@@ -9,7 +9,7 @@ use platform_cache::redis::{RedisConfig, RedisPool};
 use platform_config::ConfigMeta;
 use platform_database::pg::{PgDatabaseConfig, PgPools};
 use platform_kernel::time::{Clock, SystemClock};
-use platform_security::casbin::{CasbinConfig, CasbinEnforcer};
+// use platform_security::casbin::{CasbinConfig, CasbinEnforcer}; // 暂未启用
 use platform_security::jwt::{JwtCodec, JwtConfig};
 use platform_security::password::{PasswordConfig, PasswordHasher};
 
@@ -34,7 +34,7 @@ pub async fn build_state() -> anyhow::Result<AppState> {
 
     // let casbin_cfg = CasbinConfig::load()?;
     // let casbin = CasbinEnforcer::new(&casbin_cfg).await?;
-    // tracing::info!("安全组件（jwt/password/casbin）已就绪");
+    tracing::info!("安全组件（jwt/password）已就绪");
 
     Ok(AppState {
         db,

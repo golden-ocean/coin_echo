@@ -22,5 +22,7 @@ tracing-appender = { workspace = true }
 # opentelemetry_sdk = { version = "0.32", default-features = false, features = ["trace", "rt-tokio"] }
 # opentelemetry-otlp = { version = "0.32", default-features = false, features = ["trace", "http-proto", "reqwest-rustls-webpki-roots"] }
 # tracing-opentelemetry = { version = "0.33", default-features = false, features = ["tracing-log"] }
+[dev-dependencies]
+
 [lints]
 workspace = true

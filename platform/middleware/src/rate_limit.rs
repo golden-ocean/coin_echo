@@ -59,8 +59,6 @@ use crate::context::RequestContext;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct RateLimitConfig {
-    #[serde(default = "RateLimitConfig::default_enabled")]
-    pub enabled: bool,
     /// 每个 IP 每个窗口内允许的最大请求数。
     #[serde(default = "RateLimitConfig::default_max_requests")]
     pub max_requests: u64,
@@ -70,9 +68,6 @@ pub struct RateLimitConfig {
 }
 
 impl RateLimitConfig {
-    const fn default_enabled() -> bool {
-        true
-    }
     const fn default_max_requests() -> u64 {
         100
     }
@@ -88,7 +83,6 @@ impl RateLimitConfig {
 impl Default for RateLimitConfig {
     fn default() -> Self {
         Self {
-            enabled: Self::default_enabled(),
             max_requests: Self::default_max_requests(),
             window_secs: Self::default_window_secs(),
         }
@@ -355,7 +349,6 @@ mod tests {
 
     fn config(max_requests: u64, window_secs: u64) -> RateLimitConfig {
         RateLimitConfig {
-            enabled: true,
             max_requests,
             window_secs,
         }

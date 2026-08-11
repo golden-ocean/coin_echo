@@ -1,8 +1,15 @@
 //! 路由汇总 + 中间件挂载。
 //!
-//! 未来各领域 `xxx-api` crate 通过 `.merge(xxx_api::router(state.clone()))`
-//! 在这里挂载。中间件本身不在这个 crate 里实现——全部来自
-//! `platform-middleware`，这里只负责按配置调用它。
+//! 未来各领域 `xxx-api` crate 通过 `.merge(xxx_api::router())` 在这里
+//! 挂载。中间件本身不在这个 crate 里实现，全部来自
+//! `platform-middleware`，这里只负责调用 `bootstrap::middleware::apply`。
+//!
+//! # 挂载顺序（重要）
+//!
+//! 需要访问 `AppState` 的路由（如 `health`）必须在 `.with_state(state)`
+//! 之前 merge；不需要状态的路由（如 `openapi`）必须在
+//! `.with_state(state)` 之后 merge——两者泛型参数不同
+//! （`Router<Arc<AppState>>` vs `Router<()>`），顺序错了会直接编译不过。
 
 mod health;
 mod openapi;
@@ -12,22 +19,16 @@ use std::sync::Arc;
 use axum::Router;
 
 use crate::AppState;
-use platform_config::ConfigMeta;
-use platform_middleware::MiddlewareConfig;
 
 pub fn build(state: Arc<AppState>) -> Router {
-    let router = Router::new()
-        .route("/", axum::routing::get(|| async { "Hello, World!" }))
-        .merge(health::router())
-        .with_state(state)
-        .merge(openapi::router());
+    let router: Router<Arc<AppState>> = Router::new().merge(health::router());
 
-    // 中间件配置错误不应阻止服务启动（与数据库等硬依赖不同），失败时
-    // 落回默认值。
-    let middleware_config = MiddlewareConfig::load().unwrap_or_else(|err| {
-        tracing::warn!(%err, "中间件配置加载失败，使用默认值");
-        MiddlewareConfig::default()
-    });
+    // 中间件对状态类型泛型化，挂在 with_state 之前之后都可以，
+    // 这里选择在注入 state 之前挂，方便中间件里将来如果需要访问
+    // AppState 时不必再改动这里的调用顺序。
+    let router = platform_middleware::apply(router);
 
-    platform_middleware::apply(router, &middleware_config)
+    router
+        .with_state(state) // Router<Arc<AppState>> -> Router<()>
+        .merge(openapi::router()) // 不需要状态，必须在这一步之后合并
 }

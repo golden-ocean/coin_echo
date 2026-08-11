@@ -3,4 +3,4 @@
 
 mod server;
 
-pub use server::{ServerConfig, ServerConfigError};
+pub use server::ServerConfig;

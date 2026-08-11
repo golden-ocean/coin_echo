@@ -63,7 +63,8 @@ mod tests {
     use super::*;
     use platform_config::ConfigMeta;
 
-    // 通过配置层构造一个验证过的合法配置
+    /// 通过配置层构造一个验证过的合法配置。
+    /// `ConfigMeta::load_from` 返回 `Result`，这里的输入恒合法，直接 unwrap。
     fn valid_test_config(url: &str) -> RedisConfig {
         RedisConfig::load_from(vec![
             ("REDIS_URL", url),

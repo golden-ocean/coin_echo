@@ -152,6 +152,7 @@ impl ConfigMeta for PgDatabaseConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigError;
 
     fn valid_config() -> PgDatabaseConfig {
         PgDatabaseConfig {
@@ -164,6 +165,8 @@ mod tests {
             idle_timeout_secs: 600,
         }
     }
+
+    // ---- validate 语义校验 ----
 
     #[test]
     fn valid_config_passes_validation() {
@@ -278,10 +281,13 @@ mod tests {
         assert_eq!(cfg.idle_timeout(), Duration::from_secs(300));
     }
 
+    // ---- 加载测试：ConfigMeta::load_from 返回 Result，与生产 load() 共用同一实现 ----
+    // 快乐路径 unwrap；错误路径用 matches! 区分 Load（反序列化失败）与
+    // Validation（反序列化成功但语义非法）。
+
     #[test]
     fn defaults_applied_when_optional_env_vars_absent() {
-        let vars = vec![("DATABASE_URL".to_string(), "postgres://x/y".to_string())];
-        let cfg: PgDatabaseConfig = PgDatabaseConfig::load_from(vars).unwrap();
+        let cfg = PgDatabaseConfig::load_from(vec![("DATABASE_URL", "postgres://x/y")]).unwrap();
         assert_eq!(cfg.max_connections, 20);
         assert_eq!(cfg.min_connections, 2);
         assert_eq!(cfg.idle_timeout_secs, 600);
@@ -289,29 +295,66 @@ mod tests {
     }
 
     #[test]
-    fn missing_required_url_fails_to_load() {
-        let empty_vars = Vec::<(&str, &str)>::new();
-        let result: Result<PgDatabaseConfig, _> = PgDatabaseConfig::load_from(empty_vars);
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn replica_url_loaded_when_present() {
-        let vars = vec![
+        let cfg = PgDatabaseConfig::load_from(vec![
             ("DATABASE_URL", "postgres://primary/db"),
             ("DATABASE_REPLICA_URL", "postgres://replica/db"),
-        ];
-
-        let cfg: PgDatabaseConfig = PgDatabaseConfig::load_from(vars).unwrap();
-
+        ])
+        .unwrap();
         assert_eq!(cfg.replica_url.as_deref(), Some("postgres://replica/db"));
     }
 
+    /// 必填字段缺失（无 DATABASE_URL）→ Load 错误（figment 报 missing field）
+    #[test]
+    fn missing_required_url_is_load_error() {
+        let result = PgDatabaseConfig::load_from(Vec::<(&str, &str)>::new());
+        assert!(matches!(result, Err(ConfigError::Load(_))));
+    }
+
+    /// 反序列化成功但语义非法（url 为空串）→ Validation 错误
+    #[test]
+    fn empty_url_via_load_from_is_validation_error() {
+        let result = PgDatabaseConfig::load_from(vec![("DATABASE_URL", "")]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 反序列化成功但语义非法（max_connections=0）→ Validation 错误
+    #[test]
+    fn zero_max_connections_via_load_from_is_validation_error() {
+        let result = PgDatabaseConfig::load_from(vec![
+            ("DATABASE_URL", "postgres://x/y"),
+            ("DATABASE_MAX_CONNECTIONS", "0"),
+        ]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 反序列化成功但语义非法（min > max）→ Validation 错误
+    #[test]
+    fn min_exceeding_max_via_load_from_is_validation_error() {
+        let result = PgDatabaseConfig::load_from(vec![
+            ("DATABASE_URL", "postgres://x/y"),
+            ("DATABASE_MIN_CONNECTIONS", "30"),
+            ("DATABASE_MAX_CONNECTIONS", "20"),
+        ]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 值无法解析成目标类型 → Load 错误
+    #[test]
+    fn non_numeric_max_connections_is_load_error() {
+        let result = PgDatabaseConfig::load_from(vec![
+            ("DATABASE_URL", "postgres://x/y"),
+            ("DATABASE_MAX_CONNECTIONS", "many"),
+        ]);
+        assert!(matches!(result, Err(ConfigError::Load(_))));
+    }
+
+    /// load() 是生产方法，从真实环境变量读取，仍返回 Result
     #[test]
     fn load_uses_database_prefix_consistently() {
         let result = PgDatabaseConfig::load();
         if let Err(err) = result {
-            // 验证如果缺少 DATABASE_URL 等环境变量时，抛出的语义校验错误或原生的 Figment Error 包含相关特征
+            // 缺少 DATABASE_URL 时，加载错误信息应包含相关特征
             let err_msg = err.to_string();
             assert!(
                 err_msg.contains("DATABASE_") || err_msg.contains("url"),

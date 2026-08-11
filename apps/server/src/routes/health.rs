@@ -9,7 +9,7 @@ use axum::{Json, Router};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::state::AppState;
+use crate::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct HealthStatus {
@@ -22,7 +22,6 @@ pub fn router() -> Router<Arc<AppState>> {
     Router::new().route("/healthz", get(healthz))
 }
 
-/// 健康检查
 #[utoipa::path(
     get,
     path = "/healthz",

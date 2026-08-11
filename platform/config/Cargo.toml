@@ -16,3 +16,5 @@ thiserror = { workspace = true }
 # 配置
 figment = { version = "0.10", features = ["env"] }
 dotenvy = { version = "0.15" }
+
+[dev-dependencies]

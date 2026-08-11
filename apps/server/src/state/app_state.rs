@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use platform_kernel::time::Clock;
-use platform_security::casbin::CasbinEnforcer;
+// use platform_security::casbin::CasbinEnforcer; // casbin 暂未启用，见 infra.rs
 use platform_security::jwt::JwtCodec;
 use platform_security::password::PasswordHasher;
 

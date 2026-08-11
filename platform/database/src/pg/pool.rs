@@ -69,7 +69,8 @@ mod tests {
     use super::*;
     use platform_config::ConfigMeta;
 
-    // 辅助函数：构造一个通过了 validate 的合法基础配置
+    /// 辅助函数：构造一个通过了 validate 的合法基础配置。
+    /// `ConfigMeta::load_from` 返回 `Result`，此处输入恒合法，直接 unwrap。
     fn valid_test_config(url: &str) -> PgDatabaseConfig {
         PgDatabaseConfig::load_from(vec![
             ("DATABASE_URL", url),
@@ -80,7 +81,7 @@ mod tests {
         .unwrap()
     }
 
-    // pool 层的单测只关注网络/网络连接失败的映射，不关注配置字段非法
+    // pool 层的单测只关注网络/连接失败的映射，不关注配置字段非法
     #[tokio::test]
     async fn connect_to_unreachable_host_returns_connect_failed_error() {
         let config = valid_test_config("postgres://user:pass@127.0.0.1:1/nonexistent");

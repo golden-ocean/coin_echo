@@ -44,6 +44,7 @@ impl ConfigMeta for CasbinConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigError;
 
     #[test]
     fn empty_model_path_rejected() {
@@ -69,14 +70,52 @@ mod tests {
         ));
     }
 
+    // ---- 加载测试：ConfigMeta::load_from 返回 Result ----
+
     #[test]
-    fn load_from_rejects_missing_required_field() {
-        let vars = vec![("CASBIN_MODEL_PATH".to_string(), "m.conf".to_string())];
-        let result = CasbinConfig::load_from(vars);
-        assert!(matches!(
-            result,
-            Err(platform_config::ConfigError::Load { .. })
-        ));
+    fn load_from_succeeds_with_all_required_fields() {
+        let cfg = CasbinConfig::load_from(vec![
+            ("CASBIN_MODEL_PATH", "m.conf"),
+            ("CASBIN_POLICY_PATH", "p.csv"),
+        ])
+        .unwrap();
+        assert_eq!(cfg.model_path, "m.conf");
+        assert_eq!(cfg.policy_path, "p.csv");
+    }
+
+    /// 必填字段缺失（缺 policy_path）→ Load 错误
+    #[test]
+    fn load_from_fails_on_missing_required_field() {
+        let result = CasbinConfig::load_from(vec![("CASBIN_MODEL_PATH", "m.conf")]);
+        assert!(matches!(result, Err(ConfigError::Load(_))));
+    }
+
+    /// 反序列化成功但语义非法（空白路径）→ Validation 错误
+    #[test]
+    fn load_from_rejects_blank_paths() {
+        let result = CasbinConfig::load_from(vec![
+            ("CASBIN_MODEL_PATH", "  "),
+            ("CASBIN_POLICY_PATH", "p.csv"),
+        ]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 变量名大小写不敏感
+    #[test]
+    fn env_keys_are_case_insensitive() {
+        let cfg = CasbinConfig::load_from(vec![
+            ("casbin_model_path", "m.conf"),
+            ("casbin_policy_path", "p.csv"),
+        ])
+        .unwrap();
+        assert_eq!(cfg.model_path, "m.conf");
+    }
+
+    /// 非 CASBIN_ 前缀的键被忽略 → 必填缺失报 Load 错误
+    #[test]
+    fn non_prefixed_keys_are_ignored() {
+        let result = CasbinConfig::load_from(vec![("RBAC_MODEL_PATH", "m.conf")]);
+        assert!(matches!(result, Err(ConfigError::Load(_))));
     }
 
     #[test]

@@ -81,6 +81,7 @@ impl Default for PasswordConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use platform_config::ConfigError;
 
     #[test]
     fn default_config_is_valid() {
@@ -123,21 +124,48 @@ mod tests {
         ));
     }
 
+    // ---- 加载测试：ConfigMeta::load_from 返回 Result ----
+
     #[test]
     fn load_from_applies_defaults_when_no_vars_present() {
-        let cfg = PasswordConfig::load_from(Vec::<(String, String)>::new()).unwrap();
+        let cfg = PasswordConfig::load_from(Vec::<(&str, &str)>::new()).unwrap();
         assert_eq!(cfg.memory_kib, 19 * 1024);
         assert_eq!(cfg.iterations, 2);
+        assert_eq!(cfg.parallelism, 1);
     }
 
     #[test]
+    fn load_from_reads_all_fields() {
+        let cfg = PasswordConfig::load_from(vec![
+            ("PASSWORD_MEMORY_KIB", "65536"),
+            ("PASSWORD_ITERATIONS", "3"),
+            ("PASSWORD_PARALLELISM", "4"),
+        ])
+        .unwrap();
+        assert_eq!(cfg.memory_kib, 65536);
+        assert_eq!(cfg.iterations, 3);
+        assert_eq!(cfg.parallelism, 4);
+    }
+
+    /// 反序列化成功但语义非法（低于 OWASP 基线）→ Validation 错误
+    #[test]
     fn load_from_rejects_semantically_invalid_memory_kib() {
-        let vars = vec![("PASSWORD_MEMORY_KIB".to_string(), "1024".to_string())];
-        let result = PasswordConfig::load_from(vars);
-        assert!(matches!(
-            result,
-            Err(platform_config::ConfigError::Validation { .. })
-        ));
+        let result = PasswordConfig::load_from(vec![("PASSWORD_MEMORY_KIB", "1024")]);
+        assert!(matches!(result, Err(ConfigError::Validation { .. })));
+    }
+
+    /// 变量名大小写不敏感
+    #[test]
+    fn env_keys_are_case_insensitive() {
+        let cfg = PasswordConfig::load_from(vec![("password_iterations", "3")]).unwrap();
+        assert_eq!(cfg.iterations, 3);
+    }
+
+    /// 非 PASSWORD_ 前缀的键被忽略
+    #[test]
+    fn non_prefixed_keys_are_ignored() {
+        let cfg = PasswordConfig::load_from(vec![("ARGON_MEMORY_KIB", "65536")]).unwrap();
+        assert_eq!(cfg.memory_kib, 19 * 1024); // 默认值未被污染
     }
 
     #[test]
@@ -145,4 +173,3 @@ mod tests {
         assert_eq!(PasswordConfig::prefix(), "PASSWORD_");
     }
 }
-
