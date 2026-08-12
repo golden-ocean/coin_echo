@@ -72,7 +72,6 @@ regex = { version = "1.12" }
 zeroize = { version = "1.9" }
 
 # 配置与工具
-figment = { version = "0.10", features = ["env"] }
 tempfile = { version = "3" }
 
 # OpenAPI
@@ -83,9 +82,6 @@ utoipa = { version = "5", features = ["axum_extras"] }
 unsafe_code = "forbid"
 unused_must_use = "warn"
 
-[workspace.lints.clippy]
-dbg_macro = "warn"
-unwrap_used = "warn"
 
 [profile.release]
 opt-level = 3              # 优化级别（0-3），3 为全量优化性能
