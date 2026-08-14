@@ -166,7 +166,7 @@ impl fmt::Display for ErrorKind {
 ///
 /// 用于把「哪个字段错了、错在哪」结构化地传给客户端，避免前端靠解析错误文案
 /// 来定位字段 —— 那样文案一改客户端就崩。
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
 pub struct FieldError {
     /// 字段路径，嵌套结构用点号连接，数组用下标：`items.0.quantity`。
     pub field: Cow<'static, str>,

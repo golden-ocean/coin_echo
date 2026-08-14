@@ -12,6 +12,7 @@ use crate::password::error::PasswordError;
 ///
 /// 无内部可变状态，`Argon2` 实例按配置构造一次，可安全地在多线程间共享
 /// （`&self` 方法即可，无需 `Arc<Mutex<_>>`）。
+#[derive(Clone)]
 pub struct PasswordHasher {
     argon2: Argon2<'static>,
 }

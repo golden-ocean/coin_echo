@@ -18,28 +18,21 @@ tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 # 中间件
-tower = { version = "0.5", features = ["util", "limit", "timeout"] }
+tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.7", features = [
     "request-id",
     "cors",
-    "compression-full",
+    "compression-gzip",
     "timeout",
     "limit",
     "catch-panic",
     "set-header",
     "sensitive-headers",
     "trace",
-
 ] }
-governor = { version = "0.10" }
-tower_governor = { version = "0.8" }
-futures-util = { version = "0.3" }
 http = { version = "1.4" }
-http-body = { version = "1.1" }
-http-body-util = { version = "0.1" }
 bytes = { version = "1.12" }
 dashmap = { version = "6.2.1" }
-
 # 日志
 tracing = { workspace = true }
 

@@ -14,6 +14,8 @@ thiserror = { workspace = true }
 # 工具
 chrono = { workspace = true }
 uuid = { workspace = true }
+# OpenAPI
+utoipa = { workspace = true }
 
 [lints]
 workspace = true

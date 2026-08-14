@@ -1,3 +1,3 @@
 mod clock;
 
-pub use clock::{Clock, FixedClock, SystemClock};
+pub use clock::{Clock, FixedClock, SYSTEM_CLOCK, SystemClock};

@@ -14,7 +14,7 @@ use std::borrow::Cow;
 use crate::error::{ErrorKind, ErrorMeta, FieldError};
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ProblemDetails {
     #[serde(rename = "type")]
     pub type_: String,

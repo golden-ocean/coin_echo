@@ -20,5 +20,5 @@ mod trace;
 
 pub use apply::apply;
 pub use casbin::{CasbinAuthLayer, CasbinAuthMiddleware};
-// pub use context::{RequestContext, RequestContextLayer};
+pub use context::{RequestContext, RequestContextLayer};
 pub use jwt::{JwtAuthLayer, JwtAuthMiddleware};

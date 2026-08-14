@@ -34,7 +34,7 @@ pub fn router() -> Router<Arc<AppState>> {
 pub(crate) async fn healthz(
     State(state): State<Arc<AppState>>,
 ) -> (StatusCode, Json<HealthStatus>) {
-    let database = state.db.health_check().await.is_ok();
+    let database = state.pools.health_check().await.is_ok();
     let cache = state.cache.health_check().await.is_ok();
     let all_ok = database && cache;
 

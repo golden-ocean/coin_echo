@@ -75,7 +75,7 @@ zeroize = { version = "1.9" }
 tempfile = { version = "3" }
 
 # OpenAPI
-utoipa = { version = "5", features = ["axum_extras"] }
+utoipa = { version = "5", features = ["axum_extras", "uuid"] }
 # utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 [workspace.lints.rust]

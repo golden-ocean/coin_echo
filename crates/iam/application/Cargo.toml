@@ -6,6 +6,18 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+# 内部
+platform_kernel = { workspace = true }
+iam_domain = { workspace = true }
+
+# 异步
+async-trait = { workspace = true }
+# 数据库
+sqlx = { workspace = true }
+# 错误
+thiserror = { workspace = true }
+# 工具
+uuid = { workspace = true }
 
 [lints]
 workspace = true

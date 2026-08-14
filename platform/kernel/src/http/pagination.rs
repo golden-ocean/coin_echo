@@ -24,14 +24,14 @@
 /// 字段私有并通过取值方法暴露：这样无论来自查询串、JSON 还是代码直接构造，
 /// 都保证经过 clamp，不存在绕过上限的路径。
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
-pub struct PaginationQuery {
-    #[serde(default = "PaginationQuery::default_page")]
+pub struct PaginationParams {
+    #[serde(default = "PaginationParams::default_page")]
     page: u32,
-    #[serde(default = "PaginationQuery::default_per_page", rename = "per_page")]
+    #[serde(default = "PaginationParams::default_per_page", rename = "per_page")]
     per_page: u32,
 }
 
-impl PaginationQuery {
+impl PaginationParams {
     /// 每页条数上限。超过部分被截断而非报错 —— 对列表接口而言，返回上限条数
     /// 比抛出 400 更符合调用方预期。
     pub const MAX_PER_PAGE: u32 = 200;
@@ -86,15 +86,19 @@ impl PaginationQuery {
     }
 }
 
-impl Default for PaginationQuery {
+impl Default for PaginationParams {
     fn default() -> Self {
         Self::new(1, Self::DEFAULT_PER_PAGE)
     }
 }
 
 /// 偏移分页结果。
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-pub struct PaginationRes<T> {
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
+// #[aliases(
+//     PaginatedResponseI32 = PaginatedResponse<i32>,
+//     PaginatedResponseString = PaginatedResponse<String>
+// )]
+pub struct PaginatedResponse<T> {
     /// 当前页数据。
     pub items: Vec<T>,
     /// 当前页码。
@@ -106,10 +110,10 @@ pub struct PaginationRes<T> {
     pub total: Option<u64>,
 }
 
-impl<T> PaginationRes<T> {
+impl<T> PaginatedResponse<T> {
     /// 构造不含总数的分页结果。
     #[must_use]
-    pub const fn new(items: Vec<T>, query: PaginationQuery) -> Self {
+    pub const fn new(items: Vec<T>, query: PaginationParams) -> Self {
         Self {
             items,
             page: query.page(),
@@ -127,7 +131,7 @@ impl<T> PaginationRes<T> {
 
     /// 空结果。
     #[must_use]
-    pub const fn empty(query: PaginationQuery) -> Self {
+    pub const fn empty(query: PaginationParams) -> Self {
         Self {
             items: Vec::new(),
             page: query.page(),
@@ -139,8 +143,8 @@ impl<T> PaginationRes<T> {
     /// 逐元素转换，保留分页元信息。
     ///
     /// 用于在接口层把领域实体映射为响应结构。
-    pub fn map<U, F: FnMut(T) -> U>(self, f: F) -> PaginationRes<U> {
-        PaginationRes {
+    pub fn map<U, F: FnMut(T) -> U>(self, f: F) -> PaginatedResponse<U> {
+        PaginatedResponse {
             items: self.items.into_iter().map(f).collect(),
             page: self.page,
             per_page: self.per_page,
@@ -157,13 +161,13 @@ mod tests {
 
     #[test]
     fn page_zero_falls_back_to_one() {
-        let query = PaginationQuery::new(0, 20);
+        let query = PaginationParams::new(0, 20);
         assert_eq!(query.page(), 1);
     }
 
     #[test]
     fn page_positive_is_unchanged() {
-        let query = PaginationQuery::new(5, 20);
+        let query = PaginationParams::new(5, 20);
         assert_eq!(query.page(), 5);
     }
 
@@ -171,39 +175,39 @@ mod tests {
 
     #[test]
     fn per_page_zero_falls_back_to_default() {
-        let query = PaginationQuery::new(1, 0);
-        assert_eq!(query.per_page(), PaginationQuery::DEFAULT_PER_PAGE);
+        let query = PaginationParams::new(1, 0);
+        assert_eq!(query.per_page(), PaginationParams::DEFAULT_PER_PAGE);
     }
 
     #[test]
     fn per_page_within_range_is_unchanged() {
-        let query = PaginationQuery::new(1, 50);
+        let query = PaginationParams::new(1, 50);
         assert_eq!(query.per_page(), 50);
     }
 
     #[test]
     fn per_page_exceeding_max_is_clamped() {
-        let query = PaginationQuery::new(1, 999_999);
-        assert_eq!(query.per_page(), PaginationQuery::MAX_PER_PAGE);
+        let query = PaginationParams::new(1, 999_999);
+        assert_eq!(query.per_page(), PaginationParams::MAX_PER_PAGE);
     }
 
     #[test]
     fn per_page_exactly_at_max_is_unchanged() {
-        let query = PaginationQuery::new(1, PaginationQuery::MAX_PER_PAGE);
-        assert_eq!(query.per_page(), PaginationQuery::MAX_PER_PAGE);
+        let query = PaginationParams::new(1, PaginationParams::MAX_PER_PAGE);
+        assert_eq!(query.per_page(), PaginationParams::MAX_PER_PAGE);
     }
 
     // ---- PageQuery::offset / limit ----
 
     #[test]
     fn offset_for_first_page_is_zero() {
-        let query = PaginationQuery::new(1, 20);
+        let query = PaginationParams::new(1, 20);
         assert_eq!(query.offset(), 0);
     }
 
     #[test]
     fn offset_computed_correctly_for_later_page() {
-        let query = PaginationQuery::new(3, 20);
+        let query = PaginationParams::new(3, 20);
         // (3 - 1) * 20 = 40
         assert_eq!(query.offset(), 40);
     }
@@ -212,37 +216,37 @@ mod tests {
     fn offset_uses_clamped_per_page_not_raw_input() {
         // per_page 超限会被 clamp 到 MAX_PER_PAGE，offset 应基于 clamp 后的值计算，
         // 而不是原始输入 —— 否则等于绕过了 per_page() 的上限保护。
-        let query = PaginationQuery::new(3, 999_999);
-        assert_eq!(query.offset(), 2 * PaginationQuery::MAX_PER_PAGE as u64);
+        let query = PaginationParams::new(3, 999_999);
+        assert_eq!(query.offset(), 2 * PaginationParams::MAX_PER_PAGE as u64);
     }
 
     #[test]
     fn offset_does_not_overflow_for_large_page_numbers() {
         // 验证 u64 中间计算能吸收极端页码，不会像 u32 乘法那样静默回绕。
-        let query = PaginationQuery::new(u32::MAX, PaginationQuery::MAX_PER_PAGE);
-        let expected = (u32::MAX as u64 - 1) * PaginationQuery::MAX_PER_PAGE as u64;
+        let query = PaginationParams::new(u32::MAX, PaginationParams::MAX_PER_PAGE);
+        let expected = (u32::MAX as u64 - 1) * PaginationParams::MAX_PER_PAGE as u64;
         assert_eq!(query.offset(), expected);
     }
 
     #[test]
     fn limit_matches_clamped_per_page() {
-        let query = PaginationQuery::new(1, 30);
+        let query = PaginationParams::new(1, 30);
         assert_eq!(query.limit(), 30);
     }
 
     #[test]
     fn limit_reflects_clamp_when_per_page_zero() {
-        let query = PaginationQuery::new(1, 0);
-        assert_eq!(query.limit(), PaginationQuery::DEFAULT_PER_PAGE as u64);
+        let query = PaginationParams::new(1, 0);
+        assert_eq!(query.limit(), PaginationParams::DEFAULT_PER_PAGE as u64);
     }
 
     // ---- PageQuery::default ----
 
     #[test]
     fn default_is_page_one_with_default_per_page() {
-        let query = PaginationQuery::default();
+        let query = PaginationParams::default();
         assert_eq!(query.page(), 1);
-        assert_eq!(query.per_page(), PaginationQuery::DEFAULT_PER_PAGE);
+        assert_eq!(query.per_page(), PaginationParams::DEFAULT_PER_PAGE);
         assert_eq!(query.offset(), 0);
     }
 
@@ -250,15 +254,15 @@ mod tests {
 
     #[test]
     fn deserializes_from_empty_json_object_using_defaults() {
-        let query: PaginationQuery = serde_json::from_str("{}").unwrap();
+        let query: PaginationParams = serde_json::from_str("{}").unwrap();
         assert_eq!(query.page(), 1);
-        assert_eq!(query.per_page(), PaginationQuery::DEFAULT_PER_PAGE);
+        assert_eq!(query.per_page(), PaginationParams::DEFAULT_PER_PAGE);
     }
 
     #[test]
     fn deserializes_with_page_and_per_page_present() {
         let json = r#"{"page":4,"per_page":50}"#;
-        let query: PaginationQuery = serde_json::from_str(json).unwrap();
+        let query: PaginationParams = serde_json::from_str(json).unwrap();
         assert_eq!(query.page(), 4);
         assert_eq!(query.per_page(), 50);
     }
@@ -268,9 +272,9 @@ mod tests {
         // rename = "per_page" 的行为验证：查询串/JSON 里必须叫 per_page，
         // 而不是内部曾经用过的 size —— 防止字段名回归。
         let json = r#"{"size":50}"#;
-        let query: PaginationQuery = serde_json::from_str(json).unwrap();
+        let query: PaginationParams = serde_json::from_str(json).unwrap();
         // "size" 不是已知字段，被忽略，per_page 落回默认值
-        assert_eq!(query.per_page(), PaginationQuery::DEFAULT_PER_PAGE);
+        assert_eq!(query.per_page(), PaginationParams::DEFAULT_PER_PAGE);
     }
 
     #[test]
@@ -278,27 +282,27 @@ mod tests {
         // 反序列化本身不报错（u32 足够宽，不会像 u16 那样直接拒绝合理的深翻页输入），
         // clamp 发生在取值时。
         let json = r#"{"page":100000,"per_page":100000}"#;
-        let query: PaginationQuery = serde_json::from_str(json).unwrap();
+        let query: PaginationParams = serde_json::from_str(json).unwrap();
         assert_eq!(query.page(), 100_000);
-        assert_eq!(query.per_page(), PaginationQuery::MAX_PER_PAGE);
+        assert_eq!(query.per_page(), PaginationParams::MAX_PER_PAGE);
     }
 
     // ---- Page<T>::new ----
 
     #[test]
     fn page_new_stores_items_and_clamped_metadata() {
-        let query = PaginationQuery::new(2, 999_999);
-        let page = PaginationRes::new(vec![1, 2, 3], query);
+        let query = PaginationParams::new(2, 999_999);
+        let page = PaginatedResponse::new(vec![1, 2, 3], query);
         assert_eq!(page.items, vec![1, 2, 3]);
         assert_eq!(page.page, 2);
-        assert_eq!(page.per_page, PaginationQuery::MAX_PER_PAGE);
+        assert_eq!(page.per_page, PaginationParams::MAX_PER_PAGE);
         assert!(page.total.is_none());
     }
 
     #[test]
     fn page_empty_has_no_items_and_no_total() {
-        let query = PaginationQuery::new(1, 20);
-        let page: PaginationRes<i32> = PaginationRes::empty(query);
+        let query = PaginationParams::new(1, 20);
+        let page: PaginatedResponse<i32> = PaginatedResponse::empty(query);
         assert!(page.items.is_empty());
         assert_eq!(page.page, 1);
         assert_eq!(page.per_page, 20);
@@ -307,15 +311,15 @@ mod tests {
 
     #[test]
     fn page_with_total_sets_total() {
-        let query = PaginationQuery::new(1, 20);
-        let page = PaginationRes::new(vec![1, 2], query).with_total(42);
+        let query = PaginationParams::new(1, 20);
+        let page = PaginatedResponse::new(vec![1, 2], query).with_total(42);
         assert_eq!(page.total, Some(42));
     }
 
     #[test]
     fn page_map_transforms_items_and_preserves_metadata() {
-        let query = PaginationQuery::new(2, 10);
-        let page = PaginationRes::new(vec![1, 2, 3], query).with_total(3);
+        let query = PaginationParams::new(2, 10);
+        let page = PaginatedResponse::new(vec![1, 2, 3], query).with_total(3);
         let mapped = page.map(|n| n.to_string());
         assert_eq!(
             mapped.items,
@@ -332,16 +336,16 @@ mod tests {
     fn page_total_omitted_from_json_when_none() {
         // #[serde(skip_serializing_if = "Option::is_none")] 的行为验证：
         // 未显式计算 total 时响应体里不应出现多余的 null 字段。
-        let query = PaginationQuery::new(1, 20);
-        let page = PaginationRes::new(vec![1, 2], query);
+        let query = PaginationParams::new(1, 20);
+        let page = PaginatedResponse::new(vec![1, 2], query);
         let json = serde_json::to_string(&page).unwrap();
         assert!(!json.contains("total"));
     }
 
     #[test]
     fn page_total_included_when_present() {
-        let query = PaginationQuery::new(1, 20);
-        let page = PaginationRes::new(vec![1, 2], query).with_total(2);
+        let query = PaginationParams::new(1, 20);
+        let page = PaginatedResponse::new(vec![1, 2], query).with_total(2);
         let json = serde_json::to_string(&page).unwrap();
         assert!(json.contains("\"total\":2"));
     }
@@ -350,8 +354,8 @@ mod tests {
     fn page_serializes_with_per_page_field_name() {
         // 确认响应体字段名同步跟着 per_page 改了，不是只有请求端改了
         // 响应端还留着旧的 size。
-        let query = PaginationQuery::new(1, 20);
-        let page = PaginationRes::new(vec![1], query);
+        let query = PaginationParams::new(1, 20);
+        let page = PaginatedResponse::new(vec![1], query);
         let json = serde_json::to_string(&page).unwrap();
         assert!(json.contains("\"per_page\":20"));
         assert!(!json.contains("\"size\""));

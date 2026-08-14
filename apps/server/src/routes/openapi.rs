@@ -25,7 +25,7 @@ struct ApiDoc;
 
 /// 提供 `/openapi.json` 端点。
 pub fn router() -> Router {
-    Router::new().route("/openapi.json", get(serve_spec))
+    Router::new().route("/docs/openapi.json", get(serve_spec))
 }
 
 async fn serve_spec() -> Json<utoipa::openapi::OpenApi> {

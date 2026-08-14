@@ -21,6 +21,9 @@ platform_middleware = { workspace = true }
 platform_security = { workspace = true }
 platform_telemetry = { workspace = true }
 
+iam_api = { workspace = true }
+iam_infrastructure = { workspace = true }
+
 # 框架
 tokio = { workspace = true }
 axum = { workspace = true }

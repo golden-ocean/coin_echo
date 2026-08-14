@@ -1,0 +1,70 @@
+use axum::{Json, extract::State};
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use uuid::Uuid;
+use validator::Validate;
+
+use iam_application::error::AppError;
+
+use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+
+// =========================================================================
+// 角色创建 (Create Role)
+// =========================================================================
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct CreateReq {
+    #[validate(length(min = 2, max = 32, message = "角色名称长度必须在 2-32 之间"))]
+    #[schema(example = "管理员")]
+    name: String,
+    #[validate(length(min = 2, max = 64, message = "角色编码长度必须在 2-64 之间"))]
+    #[schema(example = "admin")]
+    code: String,
+    /// 排序值，非负整数
+    #[validate(range(min = 0, max = 9999, message = "排序值必须在 0-9999 之间"))]
+    #[schema(example = 10)]
+    sort: Option<i32>,
+    /// 备注，允许为空
+    #[validate(length(max = 255, message = "备注长度不能超过 255"))]
+    #[schema(example = "平台内置角色")]
+    remark: Option<String>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct CreateRes {}
+
+#[utoipa::path(
+    post,
+    path = "/roles",
+    request_body = CreateReq,
+    responses(
+        (status = 200, description = "角色创建成功"),
+        (status = 400, description = "参数校验失败"),
+        (status = 409, description = "角色名称/角色编码 已存在"),
+    ),
+    tag = "IAM.Role"
+)]
+pub async fn create_role(
+    State(state): State<CommandState>,
+    Json(req): Json<CreateReq>,
+) -> Result<ApiOk<CreateRes>, ApiError<AppError>> {
+    req.validate()
+        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+
+    // TODO: 替换为真实的 AuthExtractor 提取当前操作人
+    let current_operator_id = Some(Uuid::now_v7());
+
+    //  组装应用层 Command
+    let command = iam_application::commands::RoleCreateCommand {
+        name: req.name,
+        code: req.code,
+        sort: req.sort,
+        remark: req.remark,
+        operator_id: current_operator_id,
+    };
+
+    iam_application::commands::handle_role_create(&*state.uow_factory, &*state.clock, command)
+        .await
+        .map_err(ApiError::iam)?;
+
+    Ok(ApiOk::data(CreateRes {}))
+}

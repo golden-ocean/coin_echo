@@ -16,8 +16,9 @@ use platform_security::password::{PasswordConfig, PasswordHasher};
 use crate::state::AppState;
 
 pub async fn build_state() -> anyhow::Result<AppState> {
+    // ---- 共享基础设施 ----
     let database_cfg = PgDatabaseConfig::load()?;
-    let db = PgPools::connect(&database_cfg).await?;
+    let pools = PgPools::connect(&database_cfg).await?;
     // platform_database::run_migrations(&db.write).await?;
     tracing::info!("数据库连接池已就绪");
 
@@ -37,11 +38,11 @@ pub async fn build_state() -> anyhow::Result<AppState> {
     tracing::info!("安全组件（jwt/password）已就绪");
 
     Ok(AppState {
-        db,
+        pools,
         cache,
         jwt,
-        password_hasher,
         // casbin,
+        password_hasher,
         clock,
     })
 }

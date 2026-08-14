@@ -37,15 +37,15 @@ impl Cursor {
 /// 字段私有并通过取值方法暴露：与 `PageQuery` 同样的理由——保证任何来源
 /// 的输入都经过 clamp，不存在绕过上限的路径。
 #[derive(Debug, Clone, serde::Deserialize)]
-pub struct CursorQuery {
+pub struct CursorPaginationParams {
     /// 上一页返回的游标；首页为 `None`。
     #[serde(default)]
     after: Option<Cursor>,
-    #[serde(default = "CursorQuery::default_limit")]
+    #[serde(default = "CursorPaginationParams::default_limit")]
     limit: u32,
 }
 
-impl CursorQuery {
+impl CursorPaginationParams {
     /// 单次返回条数上限。超过部分被截断而非报错，理由同 [`PageQuery::MAX_PER_PAGE`]。
     pub const MAX_LIMIT: u32 = 200;
     /// 未指定时的返回条数。
@@ -80,7 +80,7 @@ impl CursorQuery {
     }
 }
 
-impl Default for CursorQuery {
+impl Default for CursorPaginationParams {
     fn default() -> Self {
         Self {
             after: None,
@@ -91,7 +91,7 @@ impl Default for CursorQuery {
 
 /// 游标分页结果。
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-pub struct CursorPage<T> {
+pub struct CursorPaginatedResponse<T> {
     /// 本批数据。
     pub items: Vec<T>,
     /// 下一页游标。为 `None` 表示已到末尾。
@@ -102,7 +102,7 @@ pub struct CursorPage<T> {
     pub next_cursor: Option<Cursor>,
 }
 
-impl<T> CursorPage<T> {
+impl<T> CursorPaginatedResponse<T> {
     /// 构造游标分页结果。
     #[must_use]
     pub const fn new(items: Vec<T>, next_cursor: Option<Cursor>) -> Self {
@@ -110,8 +110,8 @@ impl<T> CursorPage<T> {
     }
 
     /// 逐元素转换。
-    pub fn map<U, F: FnMut(T) -> U>(self, f: F) -> CursorPage<U> {
-        CursorPage {
+    pub fn map<U, F: FnMut(T) -> U>(self, f: F) -> CursorPaginatedResponse<U> {
+        CursorPaginatedResponse {
             items: self.items.into_iter().map(f).collect(),
             next_cursor: self.next_cursor,
         }
@@ -162,69 +162,69 @@ mod tests {
         assert_eq!(original, restored);
     }
 
-    // ---- CursorQuery::limit clamp ----
+    // ---- CursorPaginationParams::limit clamp ----
 
     #[test]
     fn limit_zero_falls_back_to_default() {
-        let query = CursorQuery::new(None, 0);
-        assert_eq!(query.limit(), CursorQuery::DEFAULT_LIMIT);
+        let query = CursorPaginationParams::new(None, 0);
+        assert_eq!(query.limit(), CursorPaginationParams::DEFAULT_LIMIT);
     }
 
     #[test]
     fn limit_within_range_is_unchanged() {
-        let query = CursorQuery::new(None, 50);
+        let query = CursorPaginationParams::new(None, 50);
         assert_eq!(query.limit(), 50);
     }
 
     #[test]
     fn limit_exceeding_max_is_clamped() {
-        let query = CursorQuery::new(None, 999_999);
-        assert_eq!(query.limit(), CursorQuery::MAX_LIMIT);
+        let query = CursorPaginationParams::new(None, 999_999);
+        assert_eq!(query.limit(), CursorPaginationParams::MAX_LIMIT);
     }
 
     #[test]
     fn limit_exactly_at_max_is_unchanged() {
-        let query = CursorQuery::new(None, CursorQuery::MAX_LIMIT);
-        assert_eq!(query.limit(), CursorQuery::MAX_LIMIT);
+        let query = CursorPaginationParams::new(None, CursorPaginationParams::MAX_LIMIT);
+        assert_eq!(query.limit(), CursorPaginationParams::MAX_LIMIT);
     }
 
-    // ---- CursorQuery::after ----
+    // ---- CursorPaginationParams::after ----
 
     #[test]
     fn after_returns_none_for_first_page() {
-        let query = CursorQuery::new(None, 20);
+        let query = CursorPaginationParams::new(None, 20);
         assert!(query.after().is_none());
     }
 
     #[test]
     fn after_returns_the_given_cursor() {
         let cursor = Cursor::new("token-1".to_string());
-        let query = CursorQuery::new(Some(cursor.clone()), 20);
+        let query = CursorPaginationParams::new(Some(cursor.clone()), 20);
         assert_eq!(query.after(), Some(&cursor));
     }
 
-    // ---- CursorQuery::default ----
+    // ---- CursorPaginationParams::default ----
 
     #[test]
     fn default_has_no_after_and_default_limit() {
-        let query = CursorQuery::default();
+        let query = CursorPaginationParams::default();
         assert!(query.after().is_none());
-        assert_eq!(query.limit(), CursorQuery::DEFAULT_LIMIT);
+        assert_eq!(query.limit(), CursorPaginationParams::DEFAULT_LIMIT);
     }
 
-    // ---- CursorQuery deserialize (missing fields use #[serde(default)]) ----
+    // ---- CursorPaginationParams deserialize (missing fields use #[serde(default)]) ----
 
     #[test]
     fn deserializes_from_empty_json_object_using_defaults() {
-        let query: CursorQuery = serde_json::from_str("{}").unwrap();
+        let query: CursorPaginationParams = serde_json::from_str("{}").unwrap();
         assert!(query.after().is_none());
-        assert_eq!(query.limit(), CursorQuery::DEFAULT_LIMIT);
+        assert_eq!(query.limit(), CursorPaginationParams::DEFAULT_LIMIT);
     }
 
     #[test]
     fn deserializes_with_after_and_limit_present() {
         let json = r#"{"after":"token-abc","limit":30}"#;
-        let query: CursorQuery = serde_json::from_str(json).unwrap();
+        let query: CursorPaginationParams = serde_json::from_str(json).unwrap();
         assert_eq!(query.after().map(Cursor::as_str), Some("token-abc"));
         assert_eq!(query.limit(), 30);
     }
@@ -233,28 +233,30 @@ mod tests {
     fn deserialize_still_clamps_oversized_limit() {
         // 反序列化本身不报错（u32 足够宽），clamp 发生在取值时。
         let json = r#"{"limit":100000}"#;
-        let query: CursorQuery = serde_json::from_str(json).unwrap();
-        assert_eq!(query.limit(), CursorQuery::MAX_LIMIT);
+        let query: CursorPaginationParams = serde_json::from_str(json).unwrap();
+        assert_eq!(query.limit(), CursorPaginationParams::MAX_LIMIT);
     }
 
-    // ---- CursorPage ----
+    // ---- CursorPaginatedResponse ----
 
     #[test]
     fn cursor_page_new_stores_items_and_next_cursor() {
-        let page = CursorPage::new(vec![1, 2, 3], Some(Cursor::new("next".to_string())));
+        let page =
+            CursorPaginatedResponse::new(vec![1, 2, 3], Some(Cursor::new("next".to_string())));
         assert_eq!(page.items, vec![1, 2, 3]);
         assert_eq!(page.next_cursor.as_ref().map(Cursor::as_str), Some("next"));
     }
 
     #[test]
     fn cursor_page_next_cursor_none_means_no_more_pages() {
-        let page: CursorPage<i32> = CursorPage::new(vec![1, 2], None);
+        let page: CursorPaginatedResponse<i32> = CursorPaginatedResponse::new(vec![1, 2], None);
         assert!(page.next_cursor.is_none());
     }
 
     #[test]
     fn cursor_page_map_transforms_items_and_preserves_cursor() {
-        let page = CursorPage::new(vec![1, 2, 3], Some(Cursor::new("next".to_string())));
+        let page =
+            CursorPaginatedResponse::new(vec![1, 2, 3], Some(Cursor::new("next".to_string())));
         let mapped = page.map(|n| n.to_string());
         assert_eq!(
             mapped.items,
@@ -270,14 +272,14 @@ mod tests {
     fn cursor_page_next_cursor_omitted_from_json_when_none() {
         // #[serde(skip_serializing_if = "Option::is_none")] 的行为验证：
         // 到达末页时响应体里不应出现多余的 null 字段。
-        let page: CursorPage<i32> = CursorPage::new(vec![1], None);
+        let page: CursorPaginatedResponse<i32> = CursorPaginatedResponse::new(vec![1], None);
         let json = serde_json::to_string(&page).unwrap();
         assert!(!json.contains("next_cursor"));
     }
 
     #[test]
     fn cursor_page_next_cursor_included_when_present() {
-        let page = CursorPage::new(vec![1], Some(Cursor::new("tok".to_string())));
+        let page = CursorPaginatedResponse::new(vec![1], Some(Cursor::new("tok".to_string())));
         let json = serde_json::to_string(&page).unwrap();
         assert!(json.contains("\"next_cursor\":\"tok\""));
     }

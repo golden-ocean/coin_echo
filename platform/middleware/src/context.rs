@@ -70,6 +70,17 @@ impl RequestContext {
     pub fn current_or_default() -> Self {
         Self::current().unwrap_or_default()
     }
+
+    /// 在给定上下文中执行异步代码块。
+    ///
+    /// 主要用于单元测试中模拟请求上下文。生产代码应通过
+    /// [`RequestContextLayer`] 自动注入，不应手动调用此方法。
+    pub async fn scope<F, T>(ctx: Self, f: F) -> T
+    where
+        F: std::future::Future<Output = T>,
+    {
+        REQUEST_CONTEXT.scope(ctx, f).await
+    }
 }
 
 /// 安装请求上下文的 tower 中间件。

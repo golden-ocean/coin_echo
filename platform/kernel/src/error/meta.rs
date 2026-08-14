@@ -134,6 +134,7 @@ where
 mod tests {
     use super::*;
 
+    /// 仅实现必需方法的样例：验证默认 detail/fields/retryable 行为
     #[derive(Debug, thiserror::Error)]
     #[error("测试错误")]
     struct Sample(ErrorKind);
@@ -145,6 +146,33 @@ mod tests {
 
         fn code(&self) -> &'static str {
             "sample.err"
+        }
+    }
+
+    /// 覆写 detail/fields/retryable 的样例：验证 trait 的可覆写性
+    #[derive(Debug, thiserror::Error)]
+    #[error("字段校验失败")]
+    struct Rich(ErrorKind);
+
+    impl ErrorMeta for Rich {
+        fn kind(&self) -> ErrorKind {
+            self.0
+        }
+
+        fn code(&self) -> &'static str {
+            "rich.err"
+        }
+
+        fn detail(&self) -> Option<Cow<'_, str>> {
+            Some(Cow::Borrowed("字段值不合法"))
+        }
+
+        fn fields(&self) -> Vec<FieldError> {
+            vec![FieldError::new("email", "required")]
+        }
+
+        fn retryable(&self) -> bool {
+            true // 覆盖默认策略：即使 Validation 默认不可重试，这里强制可重试
         }
     }
 
@@ -172,9 +200,31 @@ mod tests {
     }
 
     #[test]
+    fn default_detail_is_none() {
+        assert!(Sample(ErrorKind::Validation).detail().is_none());
+    }
+
+    #[test]
+    fn default_fields_is_empty() {
+        assert!(Sample(ErrorKind::Validation).fields().is_empty());
+    }
+
+    #[test]
+    fn overridden_detail_fields_retryable_are_respected() {
+        let e = Rich(ErrorKind::Validation); // Validation 默认不可重试
+
+        assert_eq!(e.code(), "rich.err");
+        assert_eq!(e.detail().as_deref(), Some("字段值不合法"));
+        assert_eq!(e.fields().len(), 1);
+        assert_eq!(e.fields()[0].field.as_ref(), "email");
+        assert!(e.retryable()); // 覆写后为 true，证明覆写优先于默认
+    }
+
+    #[test]
     fn reference_and_box_delegate_semantics() {
         let e = Sample(ErrorKind::Conflict);
-        assert_eq!(ErrorMeta::kind(&&e), ErrorKind::Conflict);
+        assert_eq!(ErrorMeta::kind(&e), ErrorKind::Conflict);
+        assert_eq!(ErrorMeta::code(&e), "sample.err");
 
         let boxed: Box<dyn ErrorMeta> = Box::new(Sample(ErrorKind::Forbidden));
         assert_eq!(boxed.kind(), ErrorKind::Forbidden);
@@ -186,5 +236,15 @@ mod tests {
         let fe = FieldError::new("email", "required");
         let json = serde_json::to_string(&fe).expect("序列化不应失败");
         assert_eq!(json, r#"{"field":"email","code":"required"}"#);
+    }
+
+    #[test]
+    fn field_error_with_message_serializes_message() {
+        let fe = FieldError::new("email", "required").with_message("邮箱不能为空");
+        let json = serde_json::to_string(&fe).expect("序列化不应失败");
+        assert_eq!(
+            json,
+            r#"{"field":"email","code":"required","message":"邮箱不能为空"}"#
+        );
     }
 }
