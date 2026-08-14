@@ -49,7 +49,7 @@ pub struct PageRes {
 
 #[utoipa::path(
     get,
-    path = "/users",
+    path = "",
     params(PageReq),
     responses(
         (status = 200, description = "用户列表分页"),

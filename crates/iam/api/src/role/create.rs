@@ -34,7 +34,7 @@ pub struct CreateRes {}
 
 #[utoipa::path(
     post,
-    path = "/roles",
+    path = "",
     request_body = CreateReq,
     responses(
         (status = 200, description = "角色创建成功"),

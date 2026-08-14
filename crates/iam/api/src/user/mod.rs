@@ -1,9 +1,11 @@
-mod create_user;
-mod delete_user;
-mod page_user;
-mod update_user;
+mod create;
+mod delete;
+mod openapi;
+mod page;
+mod update;
 
-pub use create_user::create_user;
-pub use delete_user::delete_user;
-pub use page_user::page_user;
-pub use update_user::update_user;
+pub use create::create_user;
+pub use delete::delete_user;
+pub use openapi::UserApiDoc;
+pub use page::page_user;
+pub use update::update_user;

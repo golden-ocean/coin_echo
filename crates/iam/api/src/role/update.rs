@@ -35,7 +35,7 @@ pub struct UpdateRes {}
 
 #[utoipa::path(
     put,
-    path = "/roles/{id}",
+    path = "",
     params(
         ("id" = Uuid, Path, description = "角色唯一ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
     ),

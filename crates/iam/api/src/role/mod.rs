@@ -1,9 +1,11 @@
-mod create_role;
-mod delete_role;
-mod page_role;
-mod update_role;
+mod create;
+mod delete;
+mod openapi;
+mod page;
+mod update;
 
-pub use create_role::create_role;
-pub use delete_role::delete_role;
-pub use page_role::page_role;
-pub use update_role::update_role;
+pub use create::create_role;
+pub use delete::delete_role;
+pub use openapi::RoleApiDoc;
+pub use page::page_role;
+pub use update::update_role;

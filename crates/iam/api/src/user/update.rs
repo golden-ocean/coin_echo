@@ -35,9 +35,9 @@ pub struct UpdateRes {}
 
 #[utoipa::path(
     put,
-    path = "/users/{user_id}",
+    path = "",
     params(
-        ("user_id" = Uuid, Path, description = "用户ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
+        ("id" = Uuid, Path, description = "用户ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
     ),
     request_body = UpdateReq,
     responses(

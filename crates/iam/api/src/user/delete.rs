@@ -1,5 +1,7 @@
 use axum::extract::{Path, State};
 use iam_application::error::AppError;
+use serde::Serialize;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
@@ -7,9 +9,12 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // =========================================================================
 // 用户删除 (Delete User)
 // =========================================================================
+#[derive(Debug, Serialize, ToSchema)]
+pub struct DeleteRes {}
+
 #[utoipa::path(
     delete,
-    path = "/users/{id}",
+    path = "",
     params(
         ("id" = Uuid, Path, description = "用户唯一ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
     ),
