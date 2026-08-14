@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use axum::Router;
+use serde_json::json;
 
 use crate::AppState;
 use crate::routes;
@@ -19,4 +20,10 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     app_router
         .merge(iam_router)
         .merge(routes::openapi::router())
+        .merge(scalar_api_reference::axum::router(
+            "/scalar",
+            &json!({
+                "url": "/openapi.json",
+            }),
+        ))
 }
