@@ -16,7 +16,7 @@
 //! # 为什么单独抽出这个头名常量
 //!
 //! [`REQUEST_ID_HEADER`] 会被多处引用：本文件、`trace.rs`（访问日志读取
-//! 请求 ID 放进 span）、`apps/server` 里的 `RequestContext`（把请求 ID
+//! 请求 ID 放进 span）、 `RequestContext`（把请求 ID
 //! 当作 trace_id 传给 `ProblemDetails`）。定义在这里作为唯一出处，避免
 //! 多处各写一份 `"x-request-id"` 字符串字面量导致后续修改遗漏。
 

@@ -3,7 +3,10 @@
 use platform_kernel::error::{ErrorKind, ErrorMeta, FieldError};
 use platform_kernel::meta::StatusError;
 
-use crate::id::{RoleId, UserId};
+use crate::id::{PermissionId, RoleId, UserId};
+use crate::permission::value_object::{
+    ApiMethodError, PermissionCodeError, PermissionKindError, PermissionNameError,
+};
 use crate::role::value_object::{RoleCodeError, RoleNameError};
 use crate::user::value_object::{
     DataScopeError, EmailError, EmploymentStatusError, GenderError, PasswordCredentialError,
@@ -14,57 +17,80 @@ use crate::user::value_object::{
 pub enum DomainError {
     #[error(transparent)]
     Status(#[from] StatusError),
-    // ---- User 字段格式校验----
-    #[error("数据权限范围枚举值错误: {0}")]
+
+    // ---- User 值对象错误 ----
+    #[error(transparent)]
     UserDataScope(#[from] DataScopeError),
-    #[error("邮箱错误, {0}")]
+    #[error(transparent)]
     UserEmail(#[from] EmailError),
-    #[error("在职状态枚举值错误: {0}")]
+    #[error(transparent)]
     UserEmploymentStatus(#[from] EmploymentStatusError),
-    #[error("性别枚举值错误: {0}")]
+    #[error(transparent)]
     UserGender(#[from] GenderError),
-    #[error("密码哈希错误: {0}")]
+    #[error(transparent)]
     UserPasswordCredential(#[from] PasswordCredentialError),
-    #[error("手机号码错误: {0}")]
+    #[error(transparent)]
     UserPhone(#[from] PhoneError),
-    #[error("员工工号错误: {0}")]
+    #[error(transparent)]
     UserStaffNo(#[from] StaffNoError),
-    // ---- 密码：登录/改密场景下的直接错误，无值对象承载 ----
-    // #[error("哈希密码格式无效")]
-    // InvalidPassword,
-    // #[error("密码哈希失败")]
-    // PasswordHashError,
-    // #[error("密码验证失败")]
-    // PasswordVerifyError,
-    // #[error("距上次修改不足 {min_hours} 小时，暂不能修改密码")]
-    // CoolingPeriodPassword { min_hours: i64 },
+
     // ---- User 状态/权限规则 ----
-    #[error("用户状态已启用: {id}")]
+    #[error("用户 {id} 已启用")]
     UserStatusAlreadyEnabled { id: UserId },
-    #[error("用户状态已禁用: {id}")]
+    #[error("用户 {id} 已禁用")]
     UserStatusAlreadyDisabled { id: UserId },
-    #[error("账户已被停用: {id}")]
+    #[error("用户 {id} 已被停用")]
     UserSuspended { id: UserId },
-    #[error("用户不存在: {id}")]
+    #[error("用户 {id} 不存在")]
     UserNotFound { id: UserId },
-    #[error("系统内置账户受保护: {id}")]
+    #[error("用户 {id} 受系统保护，禁止修改")]
     UserProtected { id: UserId },
 
     /// Role 相关错误
-    // ---- Value Object 错误 ----
-    #[error("角色代码错误: {0}")]
+    // ---- Role 值对象错误 ----
+    #[error(transparent)]
     RoleCode(#[from] RoleCodeError),
-    #[error("角色名称错误: {0}")]
+    #[error(transparent)]
     RoleName(#[from] RoleNameError),
 
-    #[error("角色不存在: {id}")]
+    #[error("角色 {id} 不存在")]
     RoleNotFound { id: RoleId },
-    #[error("角色状态已启用: {id}")]
+    #[error("角色 {id} 已启用")]
     RoleStatusAlreadyEnabled { id: RoleId },
-    #[error("角色状态已禁用: {id}")]
+    #[error("角色 {id} 已禁用")]
     RoleStatusAlreadyDisabled { id: RoleId },
-    #[error("系统内置角色受保护: {id}")]
+    #[error("角色 {id} 受系统保护，禁止修改")]
     RoleProtected { id: RoleId },
+
+    /// Permission 相关错误
+    // ---- Permission 值对象错误 ----
+    #[error(transparent)]
+    PermissionName(#[from] PermissionNameError),
+    #[error(transparent)]
+    PermissionCode(#[from] PermissionCodeError),
+    #[error(transparent)]
+    PermissionKind(#[from] PermissionKindError),
+    #[error(transparent)]
+    PermissionApiMethod(#[from] ApiMethodError),
+
+    #[error("权限 {id} 不存在")]
+    PermissionNotFound { id: PermissionId },
+    #[error("权限 {id} 受系统保护，禁止修改")]
+    PermissionProtected { id: PermissionId },
+    #[error("权限 {id} 已启用")]
+    PermissionStatusAlreadyEnabled { id: PermissionId },
+    #[error("权限 {id} 已禁用")]
+    PermissionStatusAlreadyDisabled { id: PermissionId },
+    #[error("权限类型 {kind} 字段不匹配：{reason}")]
+    PermissionKindFieldMismatch {
+        kind: &'static str,
+        reason: &'static str,
+    },
+    #[error("权限 {id} 父级设置无效：{reason}")]
+    PermissionInvalidParent {
+        id: PermissionId,
+        reason: &'static str,
+    },
 }
 
 impl ErrorMeta for DomainError {
@@ -99,6 +125,21 @@ impl ErrorMeta for DomainError {
             }
             Self::RoleProtected { .. } => ErrorKind::Forbidden,
             Self::RoleNotFound { .. } => ErrorKind::NotFound,
+
+            // Permission 值对象错误：委托
+            Self::PermissionName(e) => e.kind(),
+            Self::PermissionCode(e) => e.kind(),
+            Self::PermissionKind(e) => e.kind(),
+            Self::PermissionApiMethod(e) => e.kind(),
+
+            // Permission 状态/权限规则
+            Self::PermissionStatusAlreadyEnabled { .. }
+            | Self::PermissionStatusAlreadyDisabled { .. } => ErrorKind::Conflict,
+            Self::PermissionProtected { .. } => ErrorKind::Forbidden,
+            Self::PermissionNotFound { .. } => ErrorKind::NotFound,
+            Self::PermissionKindFieldMismatch { .. } | Self::PermissionInvalidParent { .. } => {
+                ErrorKind::Validation
+            }
         }
     }
 
@@ -116,20 +157,35 @@ impl ErrorMeta for DomainError {
             Self::UserPhone(e) => e.code(),
             Self::UserStaffNo(e) => e.code(),
 
-            Self::UserStatusAlreadyEnabled { .. } => "iam.user.status_already_enabled",
-            Self::UserStatusAlreadyDisabled { .. } => "iam.user.status_already_disabled",
+            Self::UserStatusAlreadyEnabled { .. } => "iam.user.status.already_enabled",
+            Self::UserStatusAlreadyDisabled { .. } => "iam.user.status.already_disabled",
             Self::UserSuspended { .. } => "iam.user.suspended",
             Self::UserNotFound { .. } => "iam.user.not_found",
-            Self::UserProtected { .. } => "iam.user.system_resource_protected",
+            Self::UserProtected { .. } => "iam.user.protected",
 
             // Role
             Self::RoleCode(e) => e.code(),
             Self::RoleName(e) => e.code(),
 
             Self::RoleNotFound { .. } => "iam.role.not_found",
-            Self::RoleStatusAlreadyEnabled { .. } => "iam.role.status_already_enabled",
-            Self::RoleStatusAlreadyDisabled { .. } => "iam.role.status_already_disabled",
-            Self::RoleProtected { .. } => "iam.role.system_resource_protected",
+            Self::RoleStatusAlreadyEnabled { .. } => "iam.role.status.already_enabled",
+            Self::RoleStatusAlreadyDisabled { .. } => "iam.role.status.already_disabled",
+            Self::RoleProtected { .. } => "iam.role.protected",
+
+            // Permission
+            Self::PermissionName(e) => e.code(),
+            Self::PermissionCode(e) => e.code(),
+            Self::PermissionKind(e) => e.code(),
+            Self::PermissionApiMethod(e) => e.code(),
+
+            Self::PermissionNotFound { .. } => "iam.permission.not_found",
+            Self::PermissionProtected { .. } => "iam.permission.protected",
+            Self::PermissionStatusAlreadyEnabled { .. } => "iam.permission.status.already_enabled",
+            Self::PermissionStatusAlreadyDisabled { .. } => {
+                "iam.permission.status.already_disabled"
+            }
+            Self::PermissionKindFieldMismatch { .. } => "iam.permission.kind_field_mismatch",
+            Self::PermissionInvalidParent { .. } => "iam.permission.invalid_parent",
         }
     }
 
@@ -149,6 +205,12 @@ impl ErrorMeta for DomainError {
             // Role
             Self::RoleCode(e) => e.detail(),
             Self::RoleName(e) => e.detail(),
+
+            // Permission
+            Self::PermissionName(e) => e.detail(),
+            Self::PermissionCode(e) => e.detail(),
+            Self::PermissionKind(e) => e.detail(),
+            Self::PermissionApiMethod(e) => e.detail(),
 
             _ => None,
         }
@@ -171,6 +233,12 @@ impl ErrorMeta for DomainError {
             // Role VO
             Self::RoleCode(e) => e.fields(),
             Self::RoleName(e) => e.fields(),
+
+            // Permission VO
+            Self::PermissionName(e) => e.fields(),
+            Self::PermissionCode(e) => e.fields(),
+            Self::PermissionKind(e) => e.fields(),
+            Self::PermissionApiMethod(e) => e.fields(),
 
             _ => Vec::new(),
         }

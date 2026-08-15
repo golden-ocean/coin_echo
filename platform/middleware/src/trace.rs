@@ -30,7 +30,7 @@ use tower_http::classify::{ServerErrorsAsFailures, SharedClassifier};
 use tower_http::trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
-use super::request_id::REQUEST_ID_HEADER;
+use crate::request_id::REQUEST_ID_HEADER;
 
 /// `make_span_with` 要求传入一个具体的函数指针类型（而非闭包捕获的
 /// 匿名类型），否则 `TraceLayer` 的完整类型签名无法在 `layer()` 的

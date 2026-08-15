@@ -61,18 +61,18 @@ static EMAIL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 pub struct Email(String);
 
 impl Email {
-    pub fn new(s: &str) -> Result<Self, EmailError> {
-        let raw = s.trim().to_ascii_lowercase();
-        if raw.is_empty() {
+    pub fn new(s: impl Into<String>) -> Result<Self, EmailError> {
+        let trimmed = s.into().trim().to_ascii_lowercase();
+        if trimmed.is_empty() {
             return Err(EmailError::Empty);
         }
-        if raw.chars().count() > MAX_LEN {
+        if trimmed.chars().count() > MAX_LEN {
             return Err(EmailError::TooLong);
         }
-        if !EMAIL_REGEX.is_match(&raw) {
-            return Err(EmailError::Invalid { value: raw });
+        if !EMAIL_REGEX.is_match(&trimmed) {
+            return Err(EmailError::Invalid { value: trimmed });
         }
-        Ok(Self(raw))
+        Ok(Self(trimmed))
     }
 
     pub fn as_str(&self) -> &str {

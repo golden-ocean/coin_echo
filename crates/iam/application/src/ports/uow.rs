@@ -92,6 +92,7 @@ pub trait UnitOfWorkFactoryExt: UnitOfWorkFactory {
 // 自动获得 .transaction(...) 方法
 impl<F: UnitOfWorkFactory + ?Sized> UnitOfWorkFactoryExt for F {}
 
+// 简单事务闭包
 // pub async fn execute_in_uow<F, T, E>(factory: &dyn UnitOfWorkFactory, f: F) -> Result<T, E>
 // where
 //     F: for<'a> FnOnce(&'a mut dyn UnitOfWork) -> BoxFuture<'a, Result<T, E>> + Send,

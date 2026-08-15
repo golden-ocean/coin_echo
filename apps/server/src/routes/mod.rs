@@ -1,4 +1,3 @@
-//! 路由汇总
-
 pub mod health;
+pub mod iam;
 pub mod openapi;

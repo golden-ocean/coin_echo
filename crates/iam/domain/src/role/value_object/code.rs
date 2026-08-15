@@ -20,9 +20,9 @@ impl ErrorMeta for RoleCodeError {
 
     fn code(&self) -> &'static str {
         match self {
-            Self::Empty => "iam.role.code_empty",
-            Self::TooLong => "iam.role.code_too_long",
-            Self::Invalid { .. } => "iam.role.code_invalid",
+            Self::Empty => "iam.role.code.empty",
+            Self::TooLong => "iam.role.code.too_long",
+            Self::Invalid { .. } => "iam.role.code.invalid",
         }
     }
 
@@ -58,19 +58,22 @@ impl ErrorMeta for RoleCodeError {
 pub struct RoleCode(String);
 
 impl RoleCode {
-    pub fn new(s: &str) -> Result<Self, RoleCodeError> {
-        let raw = s.trim().to_ascii_lowercase();
-        if raw.is_empty() {
+    pub fn new(s: impl Into<String>) -> Result<Self, RoleCodeError> {
+        let trimmed = s.into().trim().to_ascii_lowercase();
+        if trimmed.is_empty() {
             return Err(RoleCodeError::Empty);
         }
-        if raw.len() > 64 {
+        if trimmed.len() > 64 {
             return Err(RoleCodeError::TooLong);
         }
         // 允许字母、数字、下划线, 不允许中文
-        if !raw.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-            return Err(RoleCodeError::Invalid { value: raw });
+        if !trimmed
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return Err(RoleCodeError::Invalid { value: trimmed });
         }
-        Ok(Self(raw))
+        Ok(Self(trimmed))
     }
 
     pub fn as_str(&self) -> &str {
@@ -172,14 +175,14 @@ mod tests {
     fn test_role_code_error_meta() {
         let err_empty = RoleCodeError::Empty;
         assert_eq!(err_empty.kind(), ErrorKind::Validation);
-        assert_eq!(err_empty.code(), "iam.role.code_empty");
+        assert_eq!(err_empty.code(), "iam.role.code.empty");
         assert_eq!(err_empty.detail(), None);
         assert_eq!(err_empty.fields()[0].field, "code");
 
         let err_invalid = RoleCodeError::Invalid {
             value: "invalid-code".to_string(),
         };
-        assert_eq!(err_invalid.code(), "iam.role.code_invalid");
+        assert_eq!(err_invalid.code(), "iam.role.code.invalid");
         assert_eq!(
             err_invalid.detail().unwrap(),
             "角色编码格式无效: 'invalid-code'"

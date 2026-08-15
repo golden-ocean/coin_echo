@@ -49,15 +49,15 @@ pub static STAFF_NO_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 pub struct StaffNo(String);
 
 impl StaffNo {
-    pub fn new(s: &str) -> Result<Self, StaffNoError> {
-        let raw = s.trim().to_string();
-        if raw.is_empty() {
+    pub fn new(s: impl Into<String>) -> Result<Self, StaffNoError> {
+        let trimmed = s.into().trim().to_string();
+        if trimmed.is_empty() {
             return Err(StaffNoError::Empty);
         }
-        if !STAFF_NO_REGEX.is_match(&raw) {
-            return Err(StaffNoError::Invalid { value: raw });
+        if !STAFF_NO_REGEX.is_match(&trimmed) {
+            return Err(StaffNoError::Invalid { value: trimmed });
         }
-        Ok(Self(raw))
+        Ok(Self(trimmed))
     }
 
     pub fn as_str(&self) -> &str {

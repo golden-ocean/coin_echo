@@ -20,9 +20,9 @@ impl ErrorMeta for RoleNameError {
 
     fn code(&self) -> &'static str {
         match self {
-            Self::Empty => "iam.role.name_empty",
-            Self::TooLong => "iam.role.name_too_long",
-            Self::Invalid { .. } => "iam.role.name_invalid",
+            Self::Empty => "iam.role.name.empty",
+            Self::TooLong => "iam.role.name.too_long",
+            Self::Invalid { .. } => "iam.role.name.invalid",
         }
     }
 
@@ -59,21 +59,22 @@ pub struct RoleName(String);
 impl RoleName {
     const MAX_LEN: usize = 64;
 
-    pub fn new(s: &str) -> Result<Self, RoleNameError> {
-        let raw = s.trim();
-        if raw.is_empty() {
+    pub fn new(s: impl Into<String>) -> Result<Self, RoleNameError> {
+        let raw = s.into();
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
             return Err(RoleNameError::Empty);
         }
-        if raw.chars().count() > Self::MAX_LEN {
+        if trimmed.chars().count() > Self::MAX_LEN {
             return Err(RoleNameError::TooLong);
         }
         // 允许中文、字母、数字、下划线
-        if !raw.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        if !trimmed.chars().all(|c| c.is_alphanumeric() || c == '_') {
             return Err(RoleNameError::Invalid {
-                value: raw.to_string(),
+                value: trimmed.to_string(),
             });
         }
-        Ok(Self(raw.to_string()))
+        Ok(Self(trimmed.to_string()))
     }
 
     pub fn as_str(&self) -> &str {
@@ -196,13 +197,13 @@ mod tests {
     fn test_role_name_error_meta() {
         let err_too_long = RoleNameError::TooLong;
         assert_eq!(err_too_long.kind(), ErrorKind::Validation);
-        assert_eq!(err_too_long.code(), "iam.role.name_too_long");
+        assert_eq!(err_too_long.code(), "iam.role.name.too_long");
         assert_eq!(err_too_long.fields()[0].field, "name");
 
         let err_invalid = RoleNameError::Invalid {
             value: "name#".to_string(),
         };
-        assert_eq!(err_invalid.code(), "iam.role.name_invalid");
+        assert_eq!(err_invalid.code(), "iam.role.name.invalid");
         assert_eq!(err_invalid.detail().unwrap(), "角色名称格式无效: 'name#'");
     }
 }

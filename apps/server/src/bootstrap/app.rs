@@ -1,22 +1,24 @@
-//! 应用组装：业务路由 + 中间件 + state 注入 → 可服务的 `Router`。
-
+use axum::Router;
 use std::sync::Arc;
 
-use axum::Router;
+use crate::{
+    AppState,
+    routes::{health, iam, openapi},
+};
 
-use crate::AppState;
-use crate::routes;
-
-/// 组装最终应用。中间件对状态类型泛型化，挂在 `with_state` 之前之后
 pub fn build_app(state: Arc<AppState>) -> Router {
-    let iam_state = crate::state::build_iam_state(&state);
-    let iam_router = iam_api::router(iam_state);
+    // 公开路由：不需要认证，但仍需要基础设施中间件
+    let public: Router = Router::new()
+        .merge(health::router().with_state(Arc::clone(&state)))
+        .merge(openapi::router());
 
-    let base_router: Router<Arc<AppState>> = Router::new().merge(routes::health::router());
+    // 受保护路由：需要认证+鉴权，挂载 jwt/casbin，仅作用于这一组
+    let protected: Router = Router::new().nest("/api/v1", iam::router(&state));
+    // .layer(platform_middleware::jwt::layer(/* ... */))
+    // .layer(platform_middleware::casbin::layer(/* ... */));
 
-    let app_router = platform_middleware::apply(base_router).with_state(state);
+    let merged: Router = public.merge(protected);
 
-    app_router
-        .merge(iam_router)
-        .merge(routes::openapi::router())
+    // 统一包住整个应用，公开和受保护路由都要有
+    platform_middleware::apply(merged)
 }

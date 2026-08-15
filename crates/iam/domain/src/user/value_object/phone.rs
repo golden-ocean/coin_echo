@@ -47,15 +47,15 @@ static PHONE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 pub struct Phone(String);
 
 impl Phone {
-    pub fn new(s: &str) -> Result<Self, PhoneError> {
-        let raw = s.trim().to_ascii_lowercase();
-        if raw.is_empty() {
+    pub fn new(s: impl Into<String>) -> Result<Self, PhoneError> {
+        let trimmed = s.into().trim().to_ascii_lowercase();
+        if trimmed.is_empty() {
             return Err(PhoneError::Empty);
         }
-        if !PHONE_REGEX.is_match(&raw) {
-            return Err(PhoneError::Invalid { value: raw });
+        if !PHONE_REGEX.is_match(&trimmed) {
+            return Err(PhoneError::Invalid { value: trimmed });
         }
-        Ok(Self(raw))
+        Ok(Self(trimmed))
     }
 
     pub fn as_str(&self) -> &str {

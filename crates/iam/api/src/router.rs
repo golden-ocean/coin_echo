@@ -7,12 +7,10 @@ use crate::{role, state::IamState, user};
 
 /// 模块内部路由表
 pub fn router(state: IamState) -> Router {
-    let iam_routes = Router::new()
+    Router::new()
         .nest("/users", user_router())
         .nest("/roles", role_router())
-        .with_state(state);
-
-    Router::new().nest("/api/v1", iam_routes)
+        .with_state(state)
 }
 
 fn user_router() -> Router<IamState> {
