@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    ports::{error::PortError, password_hasher::PasswordHasherError, uow::UnitOfWorkError},
+    ports::{PasswordHasherError, PortError, UnitOfWorkError},
     queries::error::QueryError,
 };
 

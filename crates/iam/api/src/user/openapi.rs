@@ -4,10 +4,10 @@ use utoipa::OpenApi;
 
 use crate::user::{
     self,
-    create::{CreateReq, CreateRes},
-    delete::DeleteRes,
-    page::PageRes,
-    update::{UpdateReq, UpdateRes},
+    create::{CreateUserReq, CreateUserRes},
+    delete::DeleteUserRes,
+    page::{PageUserReq, PageUserRes},
+    update::{UpdateUserReq, UpdateUserRes},
 };
 
 #[derive(OpenApi)]
@@ -19,12 +19,13 @@ use crate::user::{
         user::delete::delete_user,
     ),
     components(schemas(
-         CreateReq,
-         CreateRes,
-         UpdateReq,
-         UpdateRes,
-         PageRes,
-         DeleteRes,
+         CreateUserReq,
+         CreateUserRes,
+         UpdateUserReq,
+         UpdateUserRes,
+         PageUserReq,
+         PageUserRes,
+         DeleteUserRes,
      )),
     tags(
         (name = "IAM.User", description = "用户管理"),

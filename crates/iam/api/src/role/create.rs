@@ -12,7 +12,7 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // 角色创建 (Create Role)
 // =========================================================================
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct CreateReq {
+pub struct CreateRoleReq {
     #[validate(length(min = 2, max = 32, message = "角色名称长度必须在 2-32 之间"))]
     #[schema(example = "管理员")]
     name: String,
@@ -30,12 +30,12 @@ pub struct CreateReq {
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct CreateRes {}
+pub struct CreateRoleRes {}
 
 #[utoipa::path(
     post,
     path = "",
-    request_body = CreateReq,
+    request_body = CreateRoleReq,
     responses(
         (status = 200, description = "角色创建成功"),
         (status = 400, description = "参数校验失败"),
@@ -45,8 +45,8 @@ pub struct CreateRes {}
 )]
 pub async fn create_role(
     State(state): State<CommandState>,
-    Json(req): Json<CreateReq>,
-) -> Result<ApiOk<CreateRes>, ApiError<AppError>> {
+    Json(req): Json<CreateRoleReq>,
+) -> Result<ApiOk<CreateRoleRes>, ApiError<AppError>> {
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
@@ -66,5 +66,5 @@ pub async fn create_role(
         .await
         .map_err(ApiError::iam)?;
 
-    Ok(ApiOk::data(CreateRes {}))
+    Ok(ApiOk::data(CreateRoleRes {}))
 }

@@ -22,9 +22,9 @@ pub struct UserPageItem {
 pub async fn handle_user_page(
     pool: &sqlx::PgPool,
     query: &UserPageQuery,
-) -> Result<(Vec<UserPageItem>, i64), AppError> {
-    let limit = query.pagination.per_page() as i64;
-    let offset = query.pagination.page() as i64;
+) -> Result<(Vec<UserPageItem>, u64), AppError> {
+    let limit = query.pagination.limit() as i64;
+    let offset = query.pagination.offset() as i64;
 
     // 利用 ($1::varchar IS NULL OR field = $1) 机制配合 UK 索引，彻底免除拼装字符串的隐患
     let total = sqlx::query_scalar!(
@@ -77,5 +77,5 @@ pub async fn handle_user_page(
         })
         .collect();
 
-    Ok((items, total))
+    Ok((items, total as u64))
 }

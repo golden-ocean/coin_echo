@@ -4,10 +4,10 @@ use utoipa::OpenApi;
 
 use crate::role::{
     self,
-    create::{CreateReq, CreateRes},
-    delete::DeleteRes,
-    page::PageRes,
-    update::{UpdateReq, UpdateRes},
+    create::{CreateRoleReq, CreateRoleRes},
+    delete::DeleteRoleRes,
+    page::{PageRoleReq, PageRoleRes},
+    update::{UpdateRoleReq, UpdateRoleRes},
 };
 
 #[derive(OpenApi)]
@@ -19,12 +19,13 @@ use crate::role::{
         role::delete::delete_role,
     ),
     components(schemas(
-         CreateReq,
-         CreateRes,
-         UpdateReq,
-         UpdateRes,
-         PageRes,
-         DeleteRes,
+         CreateRoleReq,
+         CreateRoleRes,
+         UpdateRoleReq,
+         UpdateRoleRes,
+         PageRoleReq,
+         PageRoleRes,
+         DeleteRoleRes,
      )),
     tags(
         (name = "IAM.Role", description = "角色管理"),

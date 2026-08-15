@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use iam_application::ports::error::PortError;
+use iam_application::ports::PortError;
 use uuid::Uuid;
 
 use iam_domain::{

@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
-use iam_application::ports::error::PortError;
+use iam_application::ports::PortError;
 use iam_domain::{
     id::{OrganizationId, PositionId, UserId},
     user::{

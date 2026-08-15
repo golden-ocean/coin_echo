@@ -10,7 +10,7 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // 角色删除 (Delete Role)
 // =========================================================================
 #[derive(Debug, Serialize, ToSchema)]
-pub struct DeleteRes {}
+pub struct DeleteRoleRes {}
 
 #[utoipa::path(
     delete,
@@ -29,7 +29,7 @@ pub struct DeleteRes {}
 pub async fn delete_role(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-) -> Result<ApiOk<DeleteRes>, ApiError<AppError>> {
+) -> Result<ApiOk<DeleteRoleRes>, ApiError<AppError>> {
     // TODO: 替换为真实的 AuthExtractor 提取当前操作人
     let current_operator_id = Some(Uuid::now_v7());
 
@@ -43,5 +43,5 @@ pub async fn delete_role(
         .await
         .map_err(ApiError::iam)?;
 
-    Ok(ApiOk::data(DeleteRes {}))
+    Ok(ApiOk::data(DeleteRoleRes {}))
 }

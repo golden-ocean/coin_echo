@@ -13,7 +13,7 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // Create 用户创建 (Create User)
 // =========================================================================
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct CreateReq {
+pub struct CreateUserReq {
     #[validate(length(min = 1, max = 50, message = "用户名长度必须在 1-50 之间"))]
     #[schema(example = "new_user")]
     pub username: String,
@@ -40,12 +40,12 @@ pub struct CreateReq {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct CreateRes {}
+pub struct CreateUserRes {}
 
 #[utoipa::path(
     post,
     path = "",
-    request_body = CreateReq,
+    request_body = CreateUserReq,
     responses(
         (status = 200, description = "用户创建成功"),
         (status = 400, description = "参数校验失败"),
@@ -55,8 +55,8 @@ pub struct CreateRes {}
 )]
 pub async fn create_user(
     State(state): State<CommandState>,
-    Json(req): Json<CreateReq>,
-) -> Result<ApiOk<CreateRes>, ApiError<AppError>> {
+    Json(req): Json<CreateUserReq>,
+) -> Result<ApiOk<CreateUserRes>, ApiError<AppError>> {
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
@@ -94,5 +94,5 @@ pub async fn create_user(
     .await
     .map_err(ApiError::iam)?;
 
-    Ok(ApiOk::data(CreateRes {}))
+    Ok(ApiOk::data(CreateUserRes {}))
 }

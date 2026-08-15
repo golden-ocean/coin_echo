@@ -59,8 +59,8 @@ pub fn layer(cfg: &CorsConfig) -> CorsLayer {
                 Method::POST,
                 Method::PUT,
                 Method::DELETE,
-                Method::PATCH,
-                Method::OPTIONS,
+                // Method::PATCH,
+                // Method::OPTIONS,
             ])
             // 1. 如果希望放行标准通用头，可配置具体 HeaderName：
             .allow_headers([

@@ -15,7 +15,7 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // Update 用户信息更新 (Update User Info)
 // =========================================================================
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct UpdateReq {
+pub struct UpdateUserReq {
     #[validate(length(min = 1, max = 50, message = "姓名长度必须在 1-50 之间"))]
     #[schema(example = "李四")]
     pub name: String,
@@ -31,7 +31,7 @@ pub struct UpdateReq {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct UpdateRes {}
+pub struct UpdateUserRes {}
 
 #[utoipa::path(
     put,
@@ -39,7 +39,7 @@ pub struct UpdateRes {}
     params(
         ("id" = Uuid, Path, description = "用户ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
     ),
-    request_body = UpdateReq,
+    request_body = UpdateUserReq,
     responses(
         (status = 200, description = "用户信息更新成功"),
         (status = 400, description = "参数校验失败"),
@@ -51,8 +51,8 @@ pub struct UpdateRes {}
 pub async fn update_user(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-    Json(req): Json<UpdateReq>,
-) -> Result<ApiOk<UpdateRes>, ApiError<AppError>> {
+    Json(req): Json<UpdateUserReq>,
+) -> Result<ApiOk<UpdateUserRes>, ApiError<AppError>> {
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
@@ -72,5 +72,5 @@ pub async fn update_user(
         .await
         .map_err(ApiError::iam)?;
 
-    Ok(ApiOk::data(UpdateRes {}))
+    Ok(ApiOk::data(UpdateUserRes {}))
 }

@@ -10,7 +10,7 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // 用户删除 (Delete User)
 // =========================================================================
 #[derive(Debug, Serialize, ToSchema)]
-pub struct DeleteRes {}
+pub struct DeleteUserRes {}
 
 #[utoipa::path(
     delete,
@@ -29,7 +29,7 @@ pub struct DeleteRes {}
 pub async fn delete_user(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-) -> Result<ApiOk<()>, ApiError<AppError>> {
+) -> Result<ApiOk<DeleteUserRes>, ApiError<AppError>> {
     // TODO: 替换为真实的 AuthExtractor 提取当前操作人
     let current_operator_id = Some(Uuid::now_v7());
 
@@ -42,6 +42,5 @@ pub async fn delete_user(
         .await
         .map_err(ApiError::iam)?;
 
-    // DELETE 无业务数据返回，走统一信封的 empty 形态
-    Ok(ApiOk::empty())
+    Ok(ApiOk::data(DeleteUserRes {}))
 }

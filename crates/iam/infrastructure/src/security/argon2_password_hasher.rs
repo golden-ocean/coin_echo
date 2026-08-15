@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use iam_application::ports::{
-    PasswordHasher as ApplicationPasswordHasher, password_hasher::PasswordHasherError,
-};
+use iam_application::ports::{PasswordHasher as ApplicationPasswordHasher, PasswordHasherError};
 
 use platform_security::password::{
     PasswordConfig, PasswordError as PlatformPasswordError,

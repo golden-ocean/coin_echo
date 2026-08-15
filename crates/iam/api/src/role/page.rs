@@ -11,9 +11,9 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::QueryState};
 // =========================================================================
 // 角色多条件可选分页查询 (Get Role Page)
 // =========================================================================
-#[derive(Debug, Deserialize, Validate, IntoParams)]
+#[derive(Debug, Deserialize, Validate, IntoParams, ToSchema)]
 #[into_params(parameter_in = Query)]
-pub struct PageReq {
+pub struct PageRoleReq {
     #[param(example = "1")]
     #[validate(range(min = 1, message = "页码必须从 1 开始"))]
     page: Option<u32>,
@@ -32,7 +32,7 @@ pub struct PageReq {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct PageRes {
+pub struct PageRoleRes {
     #[schema(example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")]
     pub id: String,
     #[schema(example = "admin_user")]
@@ -50,7 +50,7 @@ pub struct PageRes {
 #[utoipa::path(
     get,
     path = "",
-    params(PageReq),
+    params(PageRoleReq),
     responses(
         (status = 200, description = "角色列表分页"),
         (status = 400, description = "请求参数校验失败"),
@@ -62,8 +62,8 @@ pub struct PageRes {
 )]
 pub async fn page_role(
     State(state): State<QueryState>,
-    Query(req): Query<PageReq>,
-) -> Result<ApiOk<PaginatedResponse<PageRes>>, ApiError<AppError>> {
+    Query(req): Query<PageRoleReq>,
+) -> Result<ApiOk<PaginatedResponse<PageRoleRes>>, ApiError<AppError>> {
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
@@ -86,7 +86,7 @@ pub async fn page_role(
     let page = PaginatedResponse::new(
         records
             .into_iter()
-            .map(|item| PageRes {
+            .map(|item| PageRoleRes {
                 id: item.id.to_string(),
                 name: item.name,
                 code: item.code,

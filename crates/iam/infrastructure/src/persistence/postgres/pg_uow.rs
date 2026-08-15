@@ -1,6 +1,5 @@
 use iam_application::ports::{
-    RoleRepository, UserRepository,
-    uow::{UnitOfWork, UnitOfWorkError, UnitOfWorkFactory},
+    RoleRepository, UnitOfWork, UnitOfWorkError, UnitOfWorkFactory, UserRepository,
 };
 use sqlx::{PgPool, Postgres, Transaction};
 

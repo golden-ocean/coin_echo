@@ -15,7 +15,7 @@ use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
 // 角色更新 (Update Role)
 // =========================================================================
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct UpdateReq {
+pub struct UpdateRoleReq {
     #[validate(length(min = 2, max = 32, message = "角色名称长度必须在 2-32 之间"))]
     #[schema(example = "管理员")]
     name: String,
@@ -31,7 +31,7 @@ pub struct UpdateReq {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct UpdateRes {}
+pub struct UpdateRoleRes {}
 
 #[utoipa::path(
     put,
@@ -39,7 +39,7 @@ pub struct UpdateRes {}
     params(
         ("id" = Uuid, Path, description = "角色唯一ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
     ),
-    request_body = UpdateReq,
+    request_body = UpdateRoleReq,
     responses(
         (status = 200, description = "角色创建成功"),
         (status = 400, description = "参数校验失败"),
@@ -50,8 +50,8 @@ pub struct UpdateRes {}
 pub async fn update_role(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-    Json(req): Json<UpdateReq>,
-) -> Result<ApiOk<UpdateRes>, ApiError<AppError>> {
+    Json(req): Json<UpdateRoleReq>,
+) -> Result<ApiOk<UpdateRoleRes>, ApiError<AppError>> {
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
@@ -71,5 +71,5 @@ pub async fn update_role(
         .await
         .map_err(ApiError::iam)?;
 
-    Ok(ApiOk::data(UpdateRes {}))
+    Ok(ApiOk::data(UpdateRoleRes {}))
 }
