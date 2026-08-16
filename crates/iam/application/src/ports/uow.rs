@@ -3,7 +3,10 @@ use std::pin::Pin;
 
 use platform_kernel::error::{ErrorKind, ErrorMeta};
 
-use crate::ports::{RoleRepository, UserRepository};
+use crate::ports::{
+    PermissionRepository, RolePermissionRepository, RoleRepository, UserRepository,
+    UserRoleRepository,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum UnitOfWorkError {
@@ -39,6 +42,16 @@ impl ErrorMeta for UnitOfWorkError {
 pub trait UnitOfWork: Send {
     fn user_repo<'a>(&'a mut self) -> Result<Box<dyn UserRepository + 'a>, UnitOfWorkError>;
     fn role_repo<'a>(&'a mut self) -> Result<Box<dyn RoleRepository + 'a>, UnitOfWorkError>;
+    fn permission_repo<'a>(
+        &'a mut self,
+    ) -> Result<Box<dyn PermissionRepository + 'a>, UnitOfWorkError>;
+    fn role_permission_repo<'a>(
+        &'a mut self,
+    ) -> Result<Box<dyn RolePermissionRepository + 'a>, UnitOfWorkError>;
+    fn user_role_repo<'a>(
+        &'a mut self,
+    ) -> Result<Box<dyn UserRoleRepository + 'a>, UnitOfWorkError>;
+
     async fn commit(self: Box<Self>) -> Result<(), UnitOfWorkError>;
     async fn rollback(self: Box<Self>) -> Result<(), UnitOfWorkError>;
 }

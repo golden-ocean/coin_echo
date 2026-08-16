@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
-use iam_application::ports::PortError;
 use uuid::Uuid;
 
+use iam_application::ports::PortError;
 use iam_domain::{
     id::RoleId,
     role::{
@@ -34,8 +34,8 @@ impl From<&Role> for RoleModel {
     fn from(role: &Role) -> Self {
         Self {
             id: role.id().as_uuid(),
-            name: role.name().to_string(),
-            code: role.code().to_string(),
+            name: role.name().as_str().to_string(),
+            code: role.code().as_str().to_string(),
             is_builtin: role.is_builtin(),
             remark: role.remark().map(|v| v.to_string()),
             sort: role.sort(),

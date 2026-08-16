@@ -192,7 +192,7 @@ impl<'tx, 'c> UserRepository for PgUserRepository<'tx, 'c> {
     }
 
     // ── 聚合根查询 ───────────────
-    async fn find_by_id(&mut self, user_id: &UserId) -> Result<Option<User>, PortError> {
+    async fn find_by_id(&mut self, id: &UserId) -> Result<Option<User>, PortError> {
         let row = sqlx::query_as!(
             UserModel,
             r#"
@@ -204,7 +204,7 @@ impl<'tx, 'c> UserRepository for PgUserRepository<'tx, 'c> {
                 FROM iam_user
                 WHERE id = $1 AND deleted_at IS NULL
             "#,
-            user_id.as_uuid()
+            id.as_uuid()
         )
         .fetch_optional(&mut **self.tx)
         .await

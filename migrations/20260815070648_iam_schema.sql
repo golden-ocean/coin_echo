@@ -171,7 +171,7 @@ CREATE TABLE iam_permission (
     -- ==========================================
     -- 附属信息：前端路由/菜单专属字段
     -- ==========================================
-    path VARCHAR(255),          -- 路由地址 (如: /system/user)
+    route_path VARCHAR(255),    -- 路由地址 (如: /system/user)
     component VARCHAR(255),     -- 前端组件路径 (如: views/system/user/index)
     icon VARCHAR(128),          -- 菜单图标
 
@@ -202,7 +202,7 @@ COMMENT ON COLUMN iam_permission.name IS '权限名称 (如: 用户管理, 新�
 COMMENT ON COLUMN iam_permission.code IS '权限标识/编码 (如: iam:user:add)';
 COMMENT ON COLUMN iam_permission.kind IS '权限类型 (menu:菜单, button:按钮, api:接口)';
 COMMENT ON COLUMN iam_permission.is_builtin IS '是否为系统内置权限 (防止超管不慎删除基础菜单)';
-COMMENT ON COLUMN iam_permission.path IS '路由地址';
+COMMENT ON COLUMN iam_permission.route_path IS '前端路由路径';
 COMMENT ON COLUMN iam_permission.component IS '前端组件路径';
 COMMENT ON COLUMN iam_permission.icon IS '菜单图标';
 COMMENT ON COLUMN iam_permission.api_method IS '后端接口请求方法';

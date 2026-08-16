@@ -32,7 +32,7 @@ impl ErrorMeta for QueryError {
         match self {
             Self::NotFound => ErrorKind::NotFound,
             Self::InvalidParameter { .. } => ErrorKind::Validation,
-            Self::Database => ErrorKind::Internal,
+            Self::Database => ErrorKind::Unavailable,
             Self::Timeout => ErrorKind::Timeout,
         }
     }

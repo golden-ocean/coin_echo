@@ -1,9 +1,13 @@
 use iam_application::ports::{
-    RoleRepository, UnitOfWork, UnitOfWorkError, UnitOfWorkFactory, UserRepository,
+    PermissionRepository, RolePermissionRepository, RoleRepository, UnitOfWork, UnitOfWorkError,
+    UnitOfWorkFactory, UserRepository, UserRoleRepository,
 };
 use sqlx::{PgPool, Postgres, Transaction};
 
-use crate::persistence::postgres::{PgRoleRepository, PgUserRepository};
+use crate::persistence::postgres::{
+    PgPermissionRepository, PgRolePermissionRepository, PgRoleRepository, PgUserRepository,
+    PgUserRoleRepository,
+};
 
 pub struct PgUnitOfWorkFactory {
     pool: PgPool,
@@ -41,6 +45,27 @@ impl UnitOfWork for PgUnitOfWork {
     fn role_repo<'a>(&'a mut self) -> Result<Box<dyn RoleRepository + 'a>, UnitOfWorkError> {
         let tx = self.tx.as_mut().ok_or(UnitOfWorkError::TransactionClosed)?;
         Ok(Box::new(PgRoleRepository::new(tx)))
+    }
+
+    fn permission_repo<'a>(
+        &'a mut self,
+    ) -> Result<Box<dyn PermissionRepository + 'a>, UnitOfWorkError> {
+        let tx = self.tx.as_mut().ok_or(UnitOfWorkError::TransactionClosed)?;
+        Ok(Box::new(PgPermissionRepository::new(tx)))
+    }
+
+    fn user_role_repo<'a>(
+        &'a mut self,
+    ) -> Result<Box<dyn UserRoleRepository + 'a>, UnitOfWorkError> {
+        let tx = self.tx.as_mut().ok_or(UnitOfWorkError::TransactionClosed)?;
+        Ok(Box::new(PgUserRoleRepository::new(tx)))
+    }
+
+    fn role_permission_repo<'a>(
+        &'a mut self,
+    ) -> Result<Box<dyn RolePermissionRepository + 'a>, UnitOfWorkError> {
+        let tx = self.tx.as_mut().ok_or(UnitOfWorkError::TransactionClosed)?;
+        Ok(Box::new(PgRolePermissionRepository::new(tx)))
     }
 
     async fn commit(mut self: Box<Self>) -> Result<(), UnitOfWorkError> {

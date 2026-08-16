@@ -14,7 +14,7 @@ use crate::{
 /// 1. 内置权限 is_builtin = true 禁止修改、禁用、删除，受系统保护（防止超管误删基础菜单）
 /// 2. 已软删除权限无法执行任何修改操作
 /// 3. 权限类型（kind）与附属字段存在弱约束：
-///    - Menu: 建议填写 path / component / icon
+///    - Menu: 建议填写 route_path / component / icon
 ///    - Api:  建议填写 api_method / api_path
 ///    - Button: 通常不需要以上任何附属字段
 ///    这里只做"类型内部字段一致性"的浅校验，不强制业务方必须填写，
@@ -31,7 +31,7 @@ pub struct Permission {
     kind: PermissionKind,
 
     // 菜单专属字段
-    path: Option<String>,
+    route_path: Option<String>,
     component: Option<String>,
     icon: Option<String>,
 
@@ -58,7 +58,7 @@ impl Permission {
         name: PermissionName,
         code: PermissionCode,
         kind: PermissionKind,
-        path: Option<String>,
+        route_path: Option<String>,
         component: Option<String>,
         icon: Option<String>,
         api_method: Option<ApiMethod>,
@@ -69,7 +69,7 @@ impl Permission {
         operator_id: Option<Uuid>,
         now: DateTime<Utc>,
     ) -> Result<Self, DomainError> {
-        Self::ensure_fields_match_kind(kind, &path, &component, &api_method, &api_path)?;
+        Self::ensure_fields_match_kind(kind, &route_path, &component, &api_method, &api_path)?;
 
         Ok(Self {
             id,
@@ -77,7 +77,7 @@ impl Permission {
             name,
             code,
             kind,
-            path,
+            route_path,
             component,
             icon,
             api_method,
@@ -100,7 +100,7 @@ impl Permission {
         name: PermissionName,
         code: PermissionCode,
         kind: PermissionKind,
-        path: Option<String>,
+        route_path: Option<String>,
         component: Option<String>,
         icon: Option<String>,
         api_method: Option<ApiMethod>,
@@ -119,7 +119,7 @@ impl Permission {
             name,
             code,
             kind,
-            path,
+            route_path,
             component,
             icon,
             api_method,
@@ -148,14 +148,14 @@ impl Permission {
     /// 校验附属字段是否与权限类型匹配，拦截明显不合理的组合
     fn ensure_fields_match_kind(
         kind: PermissionKind,
-        path: &Option<String>,
+        route_path: &Option<String>,
         component: &Option<String>,
         api_method: &Option<ApiMethod>,
         api_path: &Option<String>,
     ) -> Result<(), DomainError> {
         match kind {
             PermissionKind::Button => {
-                if path.is_some()
+                if route_path.is_some()
                     || component.is_some()
                     || api_method.is_some()
                     || api_path.is_some()
@@ -175,7 +175,7 @@ impl Permission {
                 }
             }
             PermissionKind::Api => {
-                if path.is_some() || component.is_some() {
+                if route_path.is_some() || component.is_some() {
                     return Err(DomainError::PermissionKindFieldMismatch {
                         kind: kind.as_str(),
                         reason: "接口类型权限不应填写菜单专属字段",
@@ -193,7 +193,7 @@ impl Permission {
         new_name: PermissionName,
         new_code: PermissionCode,
         new_kind: PermissionKind,
-        new_path: Option<String>,
+        new_route_path: Option<String>,
         new_component: Option<String>,
         new_icon: Option<String>,
         new_api_method: Option<ApiMethod>,
@@ -206,7 +206,7 @@ impl Permission {
         self.ensure_modifiable()?;
         Self::ensure_fields_match_kind(
             new_kind,
-            &new_path,
+            &new_route_path,
             &new_component,
             &new_api_method,
             &new_api_path,
@@ -215,7 +215,7 @@ impl Permission {
         self.name = new_name;
         self.code = new_code;
         self.kind = new_kind;
-        self.path = new_path;
+        self.route_path = new_route_path;
         self.component = new_component;
         self.icon = new_icon;
         self.api_method = new_api_method;
@@ -312,8 +312,8 @@ impl Permission {
     pub fn kind(&self) -> PermissionKind {
         self.kind
     }
-    pub fn path(&self) -> Option<&str> {
-        self.path.as_deref()
+    pub fn route_path(&self) -> Option<&str> {
+        self.route_path.as_deref()
     }
     pub fn component(&self) -> Option<&str> {
         self.component.as_deref()
@@ -431,7 +431,7 @@ mod permission_aggregate_tests {
         assert!(p.is_root());
         assert_eq!(p.version_meta().value(), 0);
         assert_eq!(p.audit_meta().created_by(), Some(operator_uuid()));
-        assert_eq!(p.path(), Some("/system/user"));
+        assert_eq!(p.route_path(), Some("/system/user"));
     }
 
     #[test]
@@ -486,6 +486,7 @@ mod permission_aggregate_tests {
 
         assert_eq!(p.name().as_str(), "用户管理v2");
         assert_eq!(p.sort(), 600);
+        assert_eq!(p.route_path(), Some("/system/user/v2"));
         assert_eq!(p.version_meta().value(), 1);
     }
 
@@ -515,6 +516,35 @@ mod permission_aggregate_tests {
     }
 
     #[test]
+    fn test_update_info_rejects_mismatched_kind_fields() {
+        let now = test_now();
+        let mut p = api_permission(None, now);
+
+        // 把类型切换成 Button，但仍然带着 Api 专属字段，应当被拒绝
+        let err = p
+            .update_info(
+                PermissionName::new("按钮").unwrap(),
+                PermissionCode::new("iam:user:btn2").unwrap(),
+                PermissionKind::Button,
+                None,
+                None,
+                None,
+                Some(ApiMethod::Post),
+                Some("/api/v1/users".to_string()),
+                None,
+                None,
+                Some(operator_uuid()),
+                now,
+            )
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            DomainError::PermissionKindFieldMismatch { .. }
+        ));
+    }
+
+    #[test]
     fn test_change_parent_success() {
         let now = test_now();
         let mut p = menu_permission(None, now);
@@ -539,6 +569,20 @@ mod permission_aggregate_tests {
             .unwrap_err();
 
         assert!(matches!(err, DomainError::PermissionInvalidParent { .. }));
+        assert!(p.is_root());
+    }
+
+    #[test]
+    fn test_change_parent_fail_builtin() {
+        let now = test_now();
+        let mut p = builtin_permission(None, now);
+        let parent_id = PermissionId::from_uuid(Uuid::now_v7());
+
+        let err = p
+            .change_parent(Some(parent_id), Some(operator_uuid()), now)
+            .unwrap_err();
+
+        assert!(matches!(err, DomainError::PermissionProtected { .. }));
         assert!(p.is_root());
     }
 

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::{
     ports::{PasswordHasherError, PortError, UnitOfWorkError},
-    queries::error::QueryError,
+    queries::QueryError,
 };
 
 use iam_domain::error::DomainError;
