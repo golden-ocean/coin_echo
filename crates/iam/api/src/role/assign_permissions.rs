@@ -1,7 +1,8 @@
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, State},
 };
+use platform_middleware::CurrentUser;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -40,10 +41,10 @@ pub struct AssignRolePermissionsRes {}
 pub async fn assign_role_permissions(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
+    Extension(current_user): Extension<CurrentUser>,
     Json(req): Json<AssignRolePermissionsReq>,
 ) -> Result<ApiOk<AssignRolePermissionsRes>, ApiError<AppError>> {
-    // TODO: 替换为真实的 AuthExtractor 提取当前操作人
-    let current_operator_id = Some(Uuid::now_v7());
+    let current_operator_id = Some(current_user.id());
 
     let command = iam_application::commands::RoleAssignPermissionsCommand {
         role_id: id,
@@ -57,4 +58,3 @@ pub async fn assign_role_permissions(
 
     Ok(ApiOk::data(AssignRolePermissionsRes {}))
 }
-

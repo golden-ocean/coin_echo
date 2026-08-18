@@ -1,4 +1,8 @@
-use axum::extract::{Path, State};
+use axum::{
+    Extension,
+    extract::{Path, State},
+};
+use platform_middleware::CurrentUser;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -16,7 +20,7 @@ pub struct DeletePermissionRes {}
 
 #[utoipa::path(
     delete,
-    path = "",
+    path = "/{id}",
     params(
         ("id" = Uuid, Path, description = "权限唯一ID", example = "018f3d61-9c12-7bb3-a00d-5a81e9f1a234")
     ),
@@ -31,9 +35,9 @@ pub struct DeletePermissionRes {}
 pub async fn delete_permission(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
+    Extension(current_user): Extension<CurrentUser>,
 ) -> Result<ApiOk<DeletePermissionRes>, ApiError<AppError>> {
-    // TODO: 替换为真实的 AuthExtractor 提取当前操作人
-    let current_operator_id = Some(Uuid::now_v7());
+    let current_operator_id = Some(current_user.id());
 
     // 组装应用层 Command
     // 注意：删除前是否存在子节点（has_children）的校验放在应用层 command handler

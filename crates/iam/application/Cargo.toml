@@ -19,8 +19,12 @@ sqlx = { workspace = true }
 # 错误
 thiserror = { workspace = true }
 # 工具
+chrono = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
 
 [lints]
 workspace = true

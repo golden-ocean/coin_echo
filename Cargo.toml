@@ -76,7 +76,7 @@ zeroize = { version = "1.9" }
 tempfile = { version = "3" }
 
 # OpenAPI
-utoipa = { version = "5", features = ["axum_extras", "uuid"] }
+utoipa = { version = "5.5", features = ["axum_extras", "uuid", "chrono"] }
 scalar_api_reference = { version = "0.2", features = ["axum"] }
 # utoipa-swagger-ui = { version = "9", features = ["axum"] }
 

@@ -1,4 +1,5 @@
 use axum::Router;
+use platform_middleware::CurrentUser;
 use std::sync::Arc;
 
 use crate::{
@@ -7,18 +8,22 @@ use crate::{
 };
 
 pub fn build_app(state: Arc<AppState>) -> Router {
-    // 公开路由：不需要认证，但仍需要基础设施中间件
     let public: Router = Router::new()
         .merge(health::router().with_state(Arc::clone(&state)))
-        .merge(openapi::router());
+        .merge(openapi::router())
+        .nest("/api/v1", iam::public_router(&state));
 
-    // 受保护路由：需要认证+鉴权，挂载 jwt/casbin，仅作用于这一组
-    let protected: Router = Router::new().nest("/api/v1", iam::router(&state));
-    // .layer(platform_middleware::jwt::layer(/* ... */))
-    // .layer(platform_middleware::casbin::layer(/* ... */));
+    let protected: Router = Router::new()
+        .nest("/api/v1", iam::protected_router(&state))
+        .layer(axum::Extension(CurrentUser {
+            id: uuid::Uuid::now_v7(),
+        })); // 伪造身份，替代真实的 JWT 校验流程
+    // .layer(platform_middleware::JwtAuthLayer::new(Arc::clone(
+    //     &state.jwt,
+    // )));
+
+    // .layer(platform_middleware::CasbinLayer::new(Arc::clone(&state.casbin)));
 
     let merged: Router = public.merge(protected);
-
-    // 统一包住整个应用，公开和受保护路由都要有
     platform_middleware::apply(merged)
 }

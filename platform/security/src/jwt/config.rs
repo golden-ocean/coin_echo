@@ -32,16 +32,12 @@ pub struct JwtConfig {
 pub enum JwtConfigError {
     #[error("access_secret 长度过短（{len} 字节），至少需要 {min} 字节")]
     AccessSecretTooShort { len: usize, min: usize },
-
     #[error("refresh_secret 长度过短（{len} 字节），至少需要 {min} 字节")]
     RefreshSecretTooShort { len: usize, min: usize },
-
     #[error("access_secret 与 refresh_secret 不能相同")]
     SecretsMustDiffer,
-
     #[error("access_expire_minutes 必须为正数，当前为 {0}")]
     NonPositiveAccessExpiry(i64),
-
     #[error("refresh_expire_hours 必须为正数，当前为 {0}")]
     NonPositiveRefreshExpiry(i64),
 }

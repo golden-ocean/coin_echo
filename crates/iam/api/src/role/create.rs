@@ -1,7 +1,7 @@
-use axum::{Json, extract::State};
+use axum::{Extension, Json, extract::State};
+use platform_middleware::CurrentUser;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use uuid::Uuid;
 use validator::Validate;
 
 use iam_application::error::AppError;
@@ -45,13 +45,13 @@ pub struct CreateRoleRes {}
 )]
 pub async fn create_role(
     State(state): State<CommandState>,
+    Extension(current_user): Extension<CurrentUser>,
     Json(req): Json<CreateRoleReq>,
 ) -> Result<ApiOk<CreateRoleRes>, ApiError<AppError>> {
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
-    // TODO: 替换为真实的 AuthExtractor 提取当前操作人
-    let current_operator_id = Some(Uuid::now_v7());
+    let current_operator_id = Some(current_user.id());
 
     //  组装应用层 Command
     let command = iam_application::commands::RoleCreateCommand {

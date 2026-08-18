@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use std::sync::Arc;
 
 use iam_application::ports::{PasswordHasher as ApplicationPasswordHasher, PasswordHasherError};
@@ -32,7 +31,7 @@ impl Argon2PasswordHasher {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl ApplicationPasswordHasher for Argon2PasswordHasher {
     async fn hash(&self, raw: &str) -> Result<String, PasswordHasherError> {
         let inner = Arc::clone(&self.inner);

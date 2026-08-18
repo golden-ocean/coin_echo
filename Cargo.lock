@@ -76,6 +76,7 @@ dependencies = [
  "tokio",
  "tracing",
  "utoipa",
+ "uuid",
 ]
 
 [[package]]
@@ -1337,6 +1338,7 @@ name = "iam_api"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "chrono",
  "iam_application",
  "platform_kernel",
  "platform_middleware",
@@ -1355,11 +1357,13 @@ name = "iam_application"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "futures",
  "iam_domain",
  "platform_kernel",
  "sqlx",
  "thiserror 2.0.19",
+ "tokio",
  "tracing",
  "uuid",
 ]
@@ -2097,6 +2101,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2104,6 +2109,7 @@ name = "platform_security"
 version = "0.1.0"
 dependencies = [
  "argon2",
+ "axum",
  "casbin",
  "chrono",
  "jsonwebtoken",
@@ -2113,6 +2119,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.19",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

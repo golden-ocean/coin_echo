@@ -22,6 +22,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 # 工具
 uuid = { workspace = true }
+chrono = { workspace = true }
 # 验证
 validator = { workspace = true }
 utoipa = { workspace = true }

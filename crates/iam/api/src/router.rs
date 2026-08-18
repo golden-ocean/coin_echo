@@ -3,10 +3,18 @@ use axum::{
     routing::{delete, get, post, put},
 };
 
-use crate::{permission, role, state::IamState, user};
+use crate::{auth, permission, role, state::IamState, user};
 
 /// 模块内部路由表
-pub fn router(state: IamState) -> Router {
+
+pub fn public_router(state: IamState) -> Router {
+    Router::new()
+        .route("/auth/login", post(auth::login))
+        .route("/auth/refresh", post(auth::refresh_token))
+        .with_state(state)
+}
+
+pub fn protected_router(state: IamState) -> Router {
     Router::new()
         .nest("/users", user_router())
         .nest("/roles", role_router())

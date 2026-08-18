@@ -9,6 +9,7 @@ license.workspace = true
 # 内部
 platform_kernel = { workspace = true }
 platform_security = { workspace = true }
+
 iam_application = { workspace = true }
 iam_domain = { workspace = true }
 

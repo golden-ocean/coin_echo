@@ -16,7 +16,7 @@ tokio = { workspace = true }
 serde = { workspace = true }
 # 错误
 thiserror = { workspace = true }
-# jwt
+# 时间
 chrono = { workspace = true }
 # 密码哈希
 argon2 = { version = "0.5" , features = ["std","rand"] }
@@ -24,6 +24,8 @@ argon2 = { version = "0.5" , features = ["std","rand"] }
 jsonwebtoken = { version = "11.0", features = ["rust_crypto"] }
 # 权限鉴定
 casbin = { version = "2.20", default-features = false, features = ["runtime-tokio", "logging", "incremental"] }
+axum = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -33,8 +33,28 @@ use platform_kernel::error::{ErrorKind, ErrorMeta};
 use platform_kernel::http::ProblemDetails;
 use platform_security::jwt::{Claims, JwtCodec};
 use tower::{Layer, Service};
+use uuid::Uuid;
 
 use crate::context::RequestContext;
+
+/// 当前请求的认证身份，中间件校验通过后写入请求扩展。
+/// 任何业务 crate 的 handler 都可以直接 `Extension<CurrentUser>` 取用，
+/// 不需要认识 Claims/JwtCodec 这些 JWT 实现细节，也不需要依赖 iam 或
+/// 任何其他具体业务 crate。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CurrentUser {
+    pub id: Uuid,
+}
+
+impl CurrentUser {
+    pub(crate) fn new(id: Uuid) -> Self {
+        Self { id }
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+}
 
 #[derive(Clone)]
 pub struct JwtAuthLayer {
@@ -91,9 +111,15 @@ where
             let Some(claims) = claims else {
                 return Ok(unauthorized_response::<ResBody>());
             };
+            // sub 解析失败按无效令牌处理，和签名/声明校验失败走同一条 401 路径，
+            // 不给调用方多一种可以探测的错误形态。
+            let Ok(user_id) = Uuid::parse_str(&claims.sub) else {
+                return Ok(unauthorized_response::<ResBody>());
+            };
 
             let mut request = request;
             request.extensions_mut().insert(claims);
+            request.extensions_mut().insert(CurrentUser::new(user_id));
             inner.call(request).await
         })
     }
@@ -110,7 +136,7 @@ fn extract_bearer_token<ReqBody>(request: &Request<ReqBody>) -> Option<&str> {
 
 fn unauthorized_response<ResBody: From<Bytes>>() -> Response<ResBody> {
     let ctx = RequestContext::current_or_default();
-    let problem = ProblemDetails::from_error(&JwtAuthError, "app", ctx.instance, ctx.trace_id);
+    let problem = ProblemDetails::from_error(&JwtError, "app", ctx.instance, ctx.trace_id);
     let payload = serde_json::to_vec(&problem).unwrap_or_default();
 
     Response::builder()
@@ -124,9 +150,9 @@ fn unauthorized_response<ResBody: From<Bytes>>() -> Response<ResBody> {
         .unwrap_or_else(|_| Response::new(ResBody::from(Bytes::new())))
 }
 
-struct JwtAuthError;
+struct JwtError;
 
-impl ErrorMeta for JwtAuthError {
+impl ErrorMeta for JwtError {
     fn kind(&self) -> ErrorKind {
         ErrorKind::Unauthenticated
     }
@@ -189,12 +215,13 @@ mod tests {
     #[tokio::test]
     async fn valid_token_passes_through_and_injects_claims() {
         let codec = codec();
-        let pair = codec.issue("user-1").unwrap();
+        let user_id = Uuid::new_v4();
+        let pair = codec.issue(&user_id.to_string()).unwrap();
 
-        let inner = service_fn(|req: Request<()>| async move {
+        let inner = service_fn(move |req: Request<()>| async move {
             // 验证 claims 确实被注入了请求扩展。
             let claims = req.extensions().get::<Claims>().cloned();
-            assert_eq!(claims.map(|c| c.sub), Some("user-1".to_string()));
+            assert_eq!(claims.map(|c| c.sub), Some(user_id.to_string()));
             Ok::<_, std::convert::Infallible>(Response::new(Bytes::from_static(b"ok")))
         });
 
@@ -230,6 +257,47 @@ mod tests {
             .await
             .unwrap()
             .call(request(Some("Bearer not-a-real-jwt")))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn valid_token_injects_current_user_with_parsed_uuid() {
+        let codec = codec();
+        let user_id = Uuid::new_v4();
+        let pair = codec.issue(&user_id.to_string()).unwrap();
+
+        let inner = service_fn(move |req: Request<()>| async move {
+            let current_user = req.extensions().get::<CurrentUser>().copied();
+            assert_eq!(current_user.map(|u| u.id()), Some(user_id));
+            Ok::<_, std::convert::Infallible>(Response::new(Bytes::from_static(b"ok")))
+        });
+
+        let mut svc = JwtAuthLayer::new(Arc::clone(&codec)).layer(inner);
+        let response = svc
+            .ready()
+            .await
+            .unwrap()
+            .call(request(Some(&format!("Bearer {}", pair.access_token))))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn sub_not_a_valid_uuid_rejected_as_unauthorized() {
+        // claims.sub 是任意字符串，JWT 协议本身不保证它是合法 UUID，
+        // 这里显式验证"格式不对"和"签名/过期"走的是同一条 401 路径。
+        let codec = codec();
+        let pair = codec.issue("not-a-uuid").unwrap();
+
+        let mut svc = JwtAuthLayer::new(codec).layer(inner_ok());
+        let response = svc
+            .ready()
+            .await
+            .unwrap()
+            .call(request(Some(&format!("Bearer {}", pair.access_token))))
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);

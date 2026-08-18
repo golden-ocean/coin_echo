@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    ports::{PasswordHasherError, PortError, UnitOfWorkError},
+    ports::{PasswordHasherError, PortError, TokenServiceError, UnitOfWorkError},
     queries::QueryError,
 };
 
@@ -21,8 +21,10 @@ pub enum AppError {
     #[error(transparent)]
     UnitOfWork(#[from] UnitOfWorkError),
 
-    #[error("密码哈希错误: {0}")]
+    #[error(transparent)]
     PasswordHasher(#[from] PasswordHasherError),
+    #[error(transparent)]
+    TokenService(#[from] TokenServiceError),
 
     // ---- App 层自身语义 ----
     #[error("参数校验失败: {0}")]
@@ -55,6 +57,10 @@ impl ErrorMeta for AppError {
                 PasswordHasherError::Verify => ErrorKind::Unauthenticated,
             },
 
+            // 令牌服务：完全委托给 TokenServiceError 自己的 kind()
+            // （Issue -> Internal；Invalid/Expired -> Unauthenticated，见 token_service.rs）
+            Self::TokenService(e) => e.kind(),
+
             Self::Validation(_) => ErrorKind::Validation,
             Self::Unauthorized => ErrorKind::Unauthenticated,
             Self::Forbidden => ErrorKind::Forbidden,
@@ -71,6 +77,7 @@ impl ErrorMeta for AppError {
 
             Self::UnitOfWork(e) => e.code(),
             Self::PasswordHasher(e) => e.code(),
+            Self::TokenService(e) => e.code(),
 
             Self::Validation(_) => "iam.app.validation",
             Self::Unauthorized => "iam.app.unauthorized",
@@ -86,7 +93,7 @@ impl ErrorMeta for AppError {
             Self::Query(e) => e.detail(),
             // 应用层校验：回显调用方输入的描述（调用方错误，安全）
             Self::Validation(msg) => Some(Cow::Borrowed(msg.as_str())),
-            // 其余服务端错误一律不回显实现细节（SQL/内网/哈希/脏数据等）
+            // 其余服务端错误（含 PasswordHasher/TokenService）一律不回显实现细节
             _ => None,
         }
     }
@@ -203,6 +210,24 @@ mod tests {
     }
 
     #[test]
+    fn token_service_maps_to_expected_kinds() {
+        // 新增：之前完全没有测试覆盖 TokenService 分支，
+        // 也正是因为没有测试，kind()/code() 里漏掉这个分支才没被及时发现。
+        assert_eq!(
+            AppError::TokenService(TokenServiceError::Issue).kind(),
+            ErrorKind::Internal
+        );
+        assert_eq!(
+            AppError::TokenService(TokenServiceError::Invalid).kind(),
+            ErrorKind::Unauthenticated
+        );
+        assert_eq!(
+            AppError::TokenService(TokenServiceError::Expired).kind(),
+            ErrorKind::Unauthenticated
+        );
+    }
+
+    #[test]
     fn app_level_semantics_map_to_expected_kinds() {
         assert_eq!(
             AppError::Validation("x".into()).kind(),
@@ -243,6 +268,11 @@ mod tests {
                 .detail()
                 .is_none()
         );
+        assert!(
+            AppError::TokenService(TokenServiceError::Issue)
+                .detail()
+                .is_none()
+        );
     }
 
     // ---- fields 委托 ----
@@ -263,6 +293,7 @@ mod tests {
         assert!(AppError::Port(PortError::Database).retryable());
         assert!(AppError::UnitOfWork(UnitOfWorkError::Commit).retryable());
         assert!(!AppError::PasswordHasher(PasswordHasherError::Verify).retryable());
+        assert!(!AppError::TokenService(TokenServiceError::Invalid).retryable());
         assert!(!AppError::Internal.retryable());
     }
 
@@ -279,6 +310,10 @@ mod tests {
             })
             .code(),
             AppError::Port(PortError::VersionConflict { entity: "user" }).code(),
+            AppError::Port(PortError::HasChildren {
+                entity: "permission",
+            })
+            .code(),
             AppError::Port(PortError::StaffNoGenerateFailed).code(),
             AppError::Port(PortError::ValueConvert {
                 field: "x",
@@ -298,6 +333,9 @@ mod tests {
             AppError::UnitOfWork(UnitOfWorkError::TransactionClosed).code(),
             AppError::PasswordHasher(PasswordHasherError::Hash).code(),
             AppError::PasswordHasher(PasswordHasherError::Verify).code(),
+            AppError::TokenService(TokenServiceError::Issue).code(),
+            AppError::TokenService(TokenServiceError::Invalid).code(),
+            AppError::TokenService(TokenServiceError::Expired).code(),
             AppError::Validation("x".into()).code(),
             AppError::Unauthorized.code(),
             AppError::Forbidden.code(),

@@ -40,6 +40,7 @@ serde_json = { workspace = true }
 # OpenAPI
 utoipa = { workspace = true }
 scalar_api_reference = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
