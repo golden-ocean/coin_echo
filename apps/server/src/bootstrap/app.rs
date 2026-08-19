@@ -1,6 +1,7 @@
-use axum::Router;
-use platform_middleware::CurrentUser;
 use std::sync::Arc;
+
+use axum::Router;
+use platform_security::context::SecurityContext;
 
 use crate::{
     AppState,
@@ -8,22 +9,24 @@ use crate::{
 };
 
 pub fn build_app(state: Arc<AppState>) -> Router {
-    let public: Router = Router::new()
-        .merge(health::router().with_state(Arc::clone(&state)))
-        .merge(openapi::router())
-        .nest("/api/v1", iam::public_router(&state));
+    let iam_routers = iam::build_routers(&state);
 
-    let protected: Router = Router::new()
-        .nest("/api/v1", iam::protected_router(&state))
-        .layer(axum::Extension(CurrentUser {
-            id: uuid::Uuid::now_v7(),
-        })); // 伪造身份，替代真实的 JWT 校验流程
+    // ---- v1 ----
+    let v1_public = Router::new().nest("/iam", iam_routers.public);
+
+    let v1_protected = Router::new()
+        .nest("/iam", iam_routers.protected)
+        .layer(axum::Extension(SecurityContext::new(uuid::Uuid::nil())));
     // .layer(platform_middleware::JwtAuthLayer::new(Arc::clone(
     //     &state.jwt,
     // )));
 
-    // .layer(platform_middleware::CasbinLayer::new(Arc::clone(&state.casbin)));
+    let api_v1 = Router::new().merge(v1_public).merge(v1_protected);
 
-    let merged: Router = public.merge(protected);
-    platform_middleware::apply(merged)
+    let app = Router::new()
+        .merge(health::router().with_state(Arc::clone(&state)))
+        .merge(openapi::router())
+        .nest("/api/v1", api_v1);
+
+    platform_middleware::apply(app)
 }

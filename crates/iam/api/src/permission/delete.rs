@@ -1,8 +1,6 @@
-use axum::{
-    Extension,
-    extract::{Path, State},
-};
-use platform_middleware::CurrentUser;
+use axum::extract::{Path, State};
+
+use platform_security::context::SecurityContext;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -35,9 +33,13 @@ pub struct DeletePermissionRes {}
 pub async fn delete_permission(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-    Extension(current_user): Extension<CurrentUser>,
+    ctx: SecurityContext,
 ) -> Result<ApiOk<DeletePermissionRes>, ApiError<AppError>> {
-    let current_operator_id = Some(current_user.id());
+    state
+        .enforcer
+        .check(&ctx.id().to_string(), "iam::permission::delete")
+        .await
+        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
 
     // 组装应用层 Command
     // 注意：删除前是否存在子节点（has_children）的校验放在应用层 command handler
@@ -45,7 +47,7 @@ pub async fn delete_permission(
     // 防止产生孤儿节点。
     let command = iam_application::commands::PermissionDeleteCommand {
         id,
-        operator_id: current_operator_id,
+        operator_id: Some(ctx.id()),
     };
 
     iam_application::commands::handle_permission_delete(

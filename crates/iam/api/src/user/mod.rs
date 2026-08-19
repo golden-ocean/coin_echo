@@ -11,5 +11,5 @@ pub use create::create_user;
 pub use delete::delete_user;
 pub use openapi::UserApiDoc;
 pub use page::page_user;
-pub use roles::get_user_roles;
+pub use roles::list_user_roles;
 pub use update::update_user;

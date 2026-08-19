@@ -1,7 +1,6 @@
 mod apply;
 mod body_limit;
 mod cache;
-mod casbin;
 mod catch_panic;
 mod compression;
 mod config;
@@ -19,7 +18,6 @@ mod timeout;
 mod trace;
 
 pub use apply::apply;
-pub use casbin::{CasbinAuthLayer, CasbinAuthMiddleware};
 pub use context::{RequestContext, RequestContextLayer};
 
-pub use jwt::{CurrentUser, JwtAuthLayer, JwtAuthMiddleware};
+pub use jwt::{JwtAuthLayer, JwtAuthMiddleware};

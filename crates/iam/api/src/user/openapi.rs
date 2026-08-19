@@ -17,6 +17,7 @@ use crate::user::{
         user::page::page_user,
         user::update::update_user,
         user::delete::delete_user,
+        user::roles::list_user_roles,
     ),
     components(schemas(
          CreateUserReq,

@@ -1,8 +1,9 @@
 use axum::{
-    Extension, Json,
+    Json,
     extract::{Path, State},
 };
-use platform_middleware::CurrentUser;
+
+use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -84,13 +85,19 @@ pub struct UpdatePermissionRes {}
 pub async fn update_permission(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-    Extension(current_user): Extension<CurrentUser>,
+    ctx: SecurityContext,
     Json(req): Json<UpdatePermissionReq>,
 ) -> Result<ApiOk<UpdatePermissionRes>, ApiError<AppError>> {
+    state
+        .enforcer
+        .check(&ctx.id().to_string(), "iam::permission::update")
+        .await
+        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
 
-    let current_operator_id = Some(current_user.id());
+    let current_operator_id = Some(ctx.id());
 
     let command = iam_application::commands::PermissionUpdateCommand {
         id,

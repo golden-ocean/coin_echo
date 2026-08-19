@@ -15,7 +15,7 @@ use super::health;
 #[derive(OpenApi)]
 #[openapi(
     nest(
-        (path = "/api/v1", api = iam_api::IamApiDoc),
+        (path = "/api/v1/iam", api = iam_api::IamApiDoc),
     ),
     paths(health::healthz),
     components(schemas(health::HealthStatus)),

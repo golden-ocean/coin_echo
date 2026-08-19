@@ -5,6 +5,5 @@ mod enforcer;
 mod error;
 
 pub use config::{CasbinConfig, CasbinConfigError};
-pub use enforcer::CasbinEnforcer;
+pub use enforcer::{CasbinEnforcer, RBAC_MODEL};
 pub use error::CasbinError;
-

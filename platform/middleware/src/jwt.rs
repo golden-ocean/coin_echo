@@ -31,30 +31,12 @@ use bytes::Bytes;
 use http::{HeaderValue, Request, Response, StatusCode, header};
 use platform_kernel::error::{ErrorKind, ErrorMeta};
 use platform_kernel::http::ProblemDetails;
+use platform_security::context::SecurityContext;
 use platform_security::jwt::{Claims, JwtCodec};
 use tower::{Layer, Service};
 use uuid::Uuid;
 
 use crate::context::RequestContext;
-
-/// 当前请求的认证身份，中间件校验通过后写入请求扩展。
-/// 任何业务 crate 的 handler 都可以直接 `Extension<CurrentUser>` 取用，
-/// 不需要认识 Claims/JwtCodec 这些 JWT 实现细节，也不需要依赖 iam 或
-/// 任何其他具体业务 crate。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CurrentUser {
-    pub id: Uuid,
-}
-
-impl CurrentUser {
-    pub(crate) fn new(id: Uuid) -> Self {
-        Self { id }
-    }
-
-    pub fn id(&self) -> Uuid {
-        self.id
-    }
-}
 
 #[derive(Clone)]
 pub struct JwtAuthLayer {
@@ -119,7 +101,9 @@ where
 
             let mut request = request;
             request.extensions_mut().insert(claims);
-            request.extensions_mut().insert(CurrentUser::new(user_id));
+            request
+                .extensions_mut()
+                .insert(SecurityContext::new(user_id));
             inner.call(request).await
         })
     }
@@ -269,7 +253,7 @@ mod tests {
         let pair = codec.issue(&user_id.to_string()).unwrap();
 
         let inner = service_fn(move |req: Request<()>| async move {
-            let current_user = req.extensions().get::<CurrentUser>().copied();
+            let current_user = req.extensions().get::<SecurityContext>().copied();
             assert_eq!(current_user.map(|u| u.id()), Some(user_id));
             Ok::<_, std::convert::Infallible>(Response::new(Bytes::from_static(b"ok")))
         });

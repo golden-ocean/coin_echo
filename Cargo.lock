@@ -1342,6 +1342,7 @@ dependencies = [
  "iam_application",
  "platform_kernel",
  "platform_middleware",
+ "platform_security",
  "serde",
  "serde_json",
  "sqlx",
@@ -1386,12 +1387,14 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "async-trait",
+ "casbin",
  "chrono",
  "iam_application",
  "iam_domain",
  "platform_kernel",
  "platform_security",
  "sqlx",
+ "tempfile",
  "tokio",
  "tracing",
  "uuid",
@@ -2119,6 +2122,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.19",
  "tokio",
+ "tracing",
  "uuid",
 ]
 

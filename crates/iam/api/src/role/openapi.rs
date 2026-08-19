@@ -17,6 +17,7 @@ use crate::role::{
         role::page::page_role,
         role::update::update_role,
         role::delete::delete_role,
+        role::permissions::list_role_permissions,
     ),
     components(schemas(
          CreateRoleReq,

@@ -5,11 +5,12 @@
 
 use std::sync::Arc;
 
+use iam_infrastructure::security::CasbinAdapter;
 use platform_cache::redis::{RedisConfig, RedisPool};
 use platform_config::ConfigMeta;
 use platform_database::pg::{PgDatabaseConfig, PgPools};
 use platform_kernel::time::{Clock, SystemClock};
-// use platform_security::casbin::{CasbinConfig, CasbinEnforcer}; // 暂未启用
+use platform_security::casbin::CasbinEnforcer;
 use platform_security::jwt::{JwtCodec, JwtConfig};
 use platform_security::password::{PasswordConfig, PasswordHasher};
 
@@ -33,15 +34,16 @@ pub async fn build_state() -> anyhow::Result<AppState> {
     let password_cfg = PasswordConfig::load()?;
     let password_hasher = PasswordHasher::new(&password_cfg)?;
 
-    // let casbin_cfg = CasbinConfig::load()?;
-    // let casbin = CasbinEnforcer::new(&casbin_cfg).await?;
-    tracing::info!("安全组件（jwt/password）已就绪");
+    let adapter = CasbinAdapter::new(pools.read.clone());
+    let casbin = Arc::new(CasbinEnforcer::with_adapter(adapter).await?);
+
+    tracing::info!("安全组件（jwt/password/casbin）已就绪");
 
     Ok(AppState {
         pools,
         cache,
         jwt,
-        // casbin,
+        casbin,
         password_hasher,
         clock,
     })

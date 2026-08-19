@@ -1,5 +1,5 @@
-use axum::{Extension, Json, extract::State};
-use platform_middleware::CurrentUser;
+use axum::{Json, extract::State};
+use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -81,13 +81,17 @@ pub struct CreatePermissionRes {}
 )]
 pub async fn create_permission(
     State(state): State<CommandState>,
-    Extension(current_user): Extension<CurrentUser>,
+    ctx: SecurityContext,
     Json(req): Json<CreatePermissionReq>,
 ) -> Result<ApiOk<CreatePermissionRes>, ApiError<AppError>> {
+    state
+        .enforcer
+        .check(&ctx.id().to_string(), "iam::permission::create")
+        .await
+        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
-
-    let current_operator_id = Some(current_user.id());
 
     // 组装应用层 Command
     let command = iam_application::commands::PermissionCreateCommand {
@@ -102,7 +106,7 @@ pub async fn create_permission(
         api_path: req.api_path,
         sort: req.sort,
         remark: req.remark,
-        operator_id: current_operator_id,
+        operator_id: Some(ctx.id()),
     };
 
     iam_application::commands::handle_permission_create(

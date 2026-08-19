@@ -9,6 +9,7 @@ use std::borrow::Cow;
 use platform_kernel::error::{ErrorKind, ErrorMeta, FieldError};
 
 use crate::casbin::CasbinError;
+use crate::context::SecurityContextError;
 use crate::jwt::JwtError;
 use crate::password::PasswordError;
 
@@ -20,6 +21,8 @@ pub enum SecurityError {
     Password(#[from] PasswordError),
     #[error(transparent)]
     Casbin(#[from] CasbinError),
+    #[error(transparent)]
+    Context(#[from] SecurityContextError),
 }
 
 impl ErrorMeta for SecurityError {
@@ -28,6 +31,7 @@ impl ErrorMeta for SecurityError {
             Self::Jwt(e) => e.kind(),
             Self::Password(e) => e.kind(),
             Self::Casbin(e) => e.kind(),
+            Self::Context(e) => e.kind(),
         }
     }
 
@@ -36,6 +40,7 @@ impl ErrorMeta for SecurityError {
             Self::Jwt(e) => e.code(),
             Self::Password(e) => e.code(),
             Self::Casbin(e) => e.code(),
+            Self::Context(e) => e.code(),
         }
     }
 
@@ -44,6 +49,7 @@ impl ErrorMeta for SecurityError {
             Self::Jwt(e) => e.detail(),
             Self::Password(e) => e.detail(),
             Self::Casbin(e) => e.detail(),
+            Self::Context(e) => e.detail(),
         }
     }
 
@@ -52,6 +58,7 @@ impl ErrorMeta for SecurityError {
             Self::Jwt(e) => e.fields(),
             Self::Password(e) => e.fields(),
             Self::Casbin(e) => e.fields(),
+            Self::Context(e) => e.fields(),
         }
     }
 }

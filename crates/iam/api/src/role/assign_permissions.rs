@@ -1,8 +1,8 @@
 use axum::{
-    Extension, Json,
+    Json,
     extract::{Path, State},
 };
-use platform_middleware::CurrentUser;
+use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -41,15 +41,19 @@ pub struct AssignRolePermissionsRes {}
 pub async fn assign_role_permissions(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
-    Extension(current_user): Extension<CurrentUser>,
+    ctx: SecurityContext,
     Json(req): Json<AssignRolePermissionsReq>,
 ) -> Result<ApiOk<AssignRolePermissionsRes>, ApiError<AppError>> {
-    let current_operator_id = Some(current_user.id());
+    state
+        .enforcer
+        .check(&ctx.id().to_string(), "iam::role::assign_permissions")
+        .await
+        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
 
     let command = iam_application::commands::RoleAssignPermissionsCommand {
         role_id: id,
         permission_ids: req.permission_ids,
-        operator_id: current_operator_id,
+        operator_id: Some(ctx.id()),
     };
 
     iam_application::commands::handle_role_assign_permissions(&*state.uow_factory, command)

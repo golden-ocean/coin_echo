@@ -1,5 +1,5 @@
-use axum::{Extension, Json, extract::State};
-use platform_middleware::CurrentUser;
+use axum::{Json, extract::State};
+use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -45,13 +45,17 @@ pub struct CreateRoleRes {}
 )]
 pub async fn create_role(
     State(state): State<CommandState>,
-    Extension(current_user): Extension<CurrentUser>,
+    ctx: SecurityContext,
     Json(req): Json<CreateRoleReq>,
 ) -> Result<ApiOk<CreateRoleRes>, ApiError<AppError>> {
+    // state
+    //     .enforcer
+    //     .check(&ctx.id().to_string(), "iam::role::create")
+    //     .await
+    //     .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
-
-    let current_operator_id = Some(current_user.id());
 
     //  组装应用层 Command
     let command = iam_application::commands::RoleCreateCommand {
@@ -59,7 +63,7 @@ pub async fn create_role(
         code: req.code,
         sort: req.sort,
         remark: req.remark,
-        operator_id: current_operator_id,
+        operator_id: Some(ctx.id()),
     };
 
     iam_application::commands::handle_role_create(&*state.uow_factory, &*state.clock, command)

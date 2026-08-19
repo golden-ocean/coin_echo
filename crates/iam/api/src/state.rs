@@ -1,4 +1,5 @@
 use platform_kernel::time::Clock;
+use platform_security::casbin::CasbinEnforcer;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -7,6 +8,7 @@ use iam_application::ports::{PasswordHasher, StaffNoGenerator, TokenService, Uni
 #[derive(Clone)]
 pub struct QueryState {
     pub reader_pool: PgPool,
+    pub enforcer: Arc<CasbinEnforcer>,
 }
 
 #[derive(Clone)]
@@ -16,6 +18,7 @@ pub struct CommandState {
     pub staff_no_generator: Arc<dyn StaffNoGenerator>,
     pub clock: Arc<dyn Clock>,
     pub token_service: Arc<dyn TokenService>,
+    pub enforcer: Arc<CasbinEnforcer>,
 }
 
 #[derive(Clone)]
@@ -32,15 +35,20 @@ impl IamState {
         staff_no_generator: Arc<dyn StaffNoGenerator>,
         clock: Arc<dyn Clock>,
         token_service: Arc<dyn TokenService>,
+        enforcer: Arc<CasbinEnforcer>,
     ) -> Self {
         Self {
-            query_state: QueryState { reader_pool },
+            query_state: QueryState {
+                reader_pool,
+                enforcer: enforcer.clone(),
+            },
             command_state: CommandState {
                 uow_factory,
                 password_hasher,
                 staff_no_generator,
                 clock,
                 token_service,
+                enforcer,
             },
         }
     }

@@ -23,9 +23,11 @@ argon2 = { version = "0.5" , features = ["std","rand"] }
 # JSON Web Token
 jsonwebtoken = { version = "11.0", features = ["rust_crypto"] }
 # 权限鉴定
-casbin = { version = "2.20", default-features = false, features = ["runtime-tokio", "logging", "incremental"] }
+casbin = { workspace = true }
+# Web 框架
 axum = { workspace = true }
 uuid = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -1,6 +1,6 @@
-use axum::{Extension, Json, extract::State};
+use axum::{Json, extract::State};
 use platform_kernel::meta::Status;
-use platform_middleware::CurrentUser;
+use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -56,13 +56,17 @@ pub struct CreateUserRes {}
 )]
 pub async fn create_user(
     State(state): State<CommandState>,
-    Extension(current_user): Extension<CurrentUser>,
+    ctx: SecurityContext,
     Json(req): Json<CreateUserReq>,
 ) -> Result<ApiOk<CreateUserRes>, ApiError<AppError>> {
+    state
+        .enforcer
+        .check(&ctx.id().to_string(), "iam::user::create")
+        .await
+        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+
     req.validate()
         .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
-
-    let current_operator_id = Some(current_user.id());
 
     let status = req
         .status
@@ -82,7 +86,7 @@ pub async fn create_user(
         organization_id: req.organization_id,
         sort: req.sort,
         status,
-        operator_id: current_operator_id,
+        operator_id: Some(ctx.id()),
     };
 
     iam_application::commands::handle_user_create(

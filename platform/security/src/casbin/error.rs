@@ -7,7 +7,7 @@ pub enum CasbinError {
     PermissionDenied,
 
     /// enforcer 初始化失败（model/policy 文件缺失或格式错误）。
-    #[error("访问控制初始化失败：{0}")]
+    #[error("Casbin Enforcer 初始化失败：{0}")]
     InitFailed(String),
 
     /// 策略读写失败（如 adapter 层的存储错误）。
@@ -54,4 +54,3 @@ mod tests {
         );
     }
 }
-
