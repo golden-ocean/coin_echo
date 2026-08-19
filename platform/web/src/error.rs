@@ -1,12 +1,12 @@
-//! `ErrorMeta` → axum `Response` 的适配。
+use std::fmt;
 
 use axum::Json;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
+
 use platform_kernel::error::{ErrorKind, ErrorMeta};
 use platform_kernel::http::ProblemDetails;
 use platform_middleware::RequestContext;
-use std::fmt;
 
 /// 把业务错误包装成可直接从 handler 返回的类型。
 #[derive(Debug)]
@@ -20,14 +20,24 @@ impl<E: ErrorMeta> ApiError<E> {
         Self { error, namespace }
     }
 
-    /// 便捷构造：`iam` 命名空间下的错误。
-    pub fn iam(error: E) -> Self {
-        Self::new(error, "iam")
-    }
-
     /// 获取内部错误的引用（供日志/中间件等外部消费者使用）。
     pub fn inner(&self) -> &E {
         &self.error
+    }
+
+    pub fn status_code(&self) -> StatusCode {
+        match self.error.kind() {
+            ErrorKind::Validation => StatusCode::BAD_REQUEST,
+            ErrorKind::Unauthenticated => StatusCode::UNAUTHORIZED,
+            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
+            ErrorKind::NotFound => StatusCode::BAD_REQUEST,
+            ErrorKind::Conflict => StatusCode::CONFLICT,
+            ErrorKind::Exhausted => StatusCode::TOO_MANY_REQUESTS,
+            ErrorKind::Timeout => StatusCode::GATEWAY_TIMEOUT,
+            ErrorKind::Unavailable => StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        }
     }
 
     /// 根据错误语义给出建议的 `Retry-After` 秒数。

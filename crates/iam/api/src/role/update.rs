@@ -10,7 +10,10 @@ use validator::Validate;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // 角色更新 (Update Role)
@@ -53,15 +56,15 @@ pub async fn update_role(
     State(state): State<CommandState>,
     ctx: SecurityContext,
     Json(req): Json<UpdateRoleReq>,
-) -> Result<ApiOk<UpdateRoleRes>, ApiError<AppError>> {
+) -> Result<ApiOk<UpdateRoleRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::role::update")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let command = iam_application::commands::RoleUpdateCommand {
         id,
@@ -74,7 +77,7 @@ pub async fn update_role(
 
     iam_application::commands::handle_role_update(&*state.uow_factory, &*state.clock, command)
         .await
-        .map_err(ApiError::iam)?;
+        .map_err(AppError::from)?;
 
     Ok(ApiOk::data(UpdateRoleRes {}))
 }

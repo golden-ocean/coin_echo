@@ -1343,6 +1343,7 @@ dependencies = [
  "platform_kernel",
  "platform_middleware",
  "platform_security",
+ "platform_web",
  "serde",
  "serde_json",
  "sqlx",
@@ -2137,6 +2138,20 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "platform_web"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "platform_kernel",
+ "platform_middleware",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+ "tokio",
 ]
 
 [[package]]

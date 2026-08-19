@@ -5,7 +5,10 @@ use validator::Validate;
 
 use iam_application::{commands::LoginCommand, error::AppError};
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct LoginReq {
@@ -48,9 +51,9 @@ pub struct LoginRes {
 pub async fn login(
     State(state): State<CommandState>,
     Json(req): Json<LoginReq>,
-) -> Result<ApiOk<LoginRes>, ApiError<AppError>> {
+) -> Result<ApiOk<LoginRes>, ApiError> {
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let command = LoginCommand {
         username: req.username,
@@ -65,7 +68,7 @@ pub async fn login(
         command,
     )
     .await
-    .map_err(ApiError::iam)?;
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(LoginRes {
         user_id: result.user_id.to_string(),

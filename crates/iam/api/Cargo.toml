@@ -10,6 +10,7 @@ license.workspace = true
 platform_kernel = { workspace = true }
 platform_middleware = { workspace = true }
 platform_security = { workspace = true }
+platform_web = { workspace = true }
 
 iam_application = { workspace = true }
 

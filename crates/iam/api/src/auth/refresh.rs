@@ -5,7 +5,10 @@ use validator::Validate;
 
 use iam_application::{commands::RefreshTokenCommand, error::AppError};
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct RefreshTokenReq {
@@ -35,9 +38,9 @@ pub struct RefreshTokenRes {
 pub async fn refresh_token(
     State(state): State<CommandState>,
     Json(req): Json<RefreshTokenReq>,
-) -> Result<ApiOk<RefreshTokenRes>, ApiError<AppError>> {
+) -> Result<ApiOk<RefreshTokenRes>, ApiError> {
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let command = RefreshTokenCommand {
         refresh_token: req.refresh_token,
@@ -49,7 +52,7 @@ pub async fn refresh_token(
         command,
     )
     .await
-    .map_err(ApiError::iam)?;
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(RefreshTokenRes {
         access_token: result.access_token,

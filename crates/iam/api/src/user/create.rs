@@ -8,7 +8,10 @@ use validator::Validate;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // Create 用户创建 (Create User)
@@ -58,22 +61,22 @@ pub async fn create_user(
     State(state): State<CommandState>,
     ctx: SecurityContext,
     Json(req): Json<CreateUserReq>,
-) -> Result<ApiOk<CreateUserRes>, ApiError<AppError>> {
+) -> Result<ApiOk<CreateUserRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::user::create")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let status = req
         .status
         .as_deref()
         .map(|s| {
             s.parse::<Status>()
-                .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))
+                .map_err(|e| AppError::Validation(e.to_string()))
         })
         .transpose()?;
 
@@ -97,7 +100,7 @@ pub async fn create_user(
         command,
     )
     .await
-    .map_err(ApiError::iam)?;
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(CreateUserRes {}))
 }

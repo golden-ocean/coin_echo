@@ -10,6 +10,7 @@ members = [
     "platform/middleware",
     "platform/security",
     "platform/telemetry",
+    "platform/web",
 
     "crates/iam/application",
     "crates/iam/domain",
@@ -34,6 +35,7 @@ platform_kernel = { path = "platform/kernel" }
 platform_middleware = { path = "platform/middleware" }
 platform_security = { path = "platform/security" }
 platform_telemetry = { path = "platform/telemetry" }
+platform_web = { path = "platform/web" }
 
 # iam 模块
 iam_application = { path = "crates/iam/application" }

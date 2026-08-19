@@ -1,0 +1,23 @@
+[package]
+name = "platform_web"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+platform_kernel = { workspace = true }
+platform_middleware = { workspace = true }
+
+axum = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+
+
+[dev-dependencies]
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[lints]
+workspace = true

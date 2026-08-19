@@ -10,7 +10,10 @@ use validator::Validate;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // Update 用户信息更新 (Update User Info)
@@ -54,15 +57,15 @@ pub async fn update_user(
     State(state): State<CommandState>,
     ctx: SecurityContext,
     Json(req): Json<UpdateUserReq>,
-) -> Result<ApiOk<UpdateUserRes>, ApiError<AppError>> {
+) -> Result<ApiOk<UpdateUserRes>, ApiError> {
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::user::update")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     let command = iam_application::commands::UserUpdateCommand {
         id,
@@ -75,7 +78,7 @@ pub async fn update_user(
 
     iam_application::commands::handle_user_update(&*state.uow_factory, &*state.clock, command)
         .await
-        .map_err(ApiError::iam)?;
+        .map_err(AppError::from)?;
 
     Ok(ApiOk::data(UpdateUserRes {}))
 }

@@ -9,7 +9,10 @@ use uuid::Uuid;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // 用户-角色分配 (Assign User Roles)：全量替换，非增量
@@ -43,12 +46,12 @@ pub async fn assign_user_roles(
     State(state): State<CommandState>,
     ctx: SecurityContext,
     Json(req): Json<AssignUserRolesReq>,
-) -> Result<ApiOk<AssignUserRolesRes>, ApiError<AppError>> {
+) -> Result<ApiOk<AssignUserRolesRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::user::assign_roles")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     let command = iam_application::commands::UserAssignRolesCommand {
         user_id: id,
@@ -58,7 +61,7 @@ pub async fn assign_user_roles(
 
     iam_application::commands::handle_user_assign_roles(&*state.uow_factory, command)
         .await
-        .map_err(ApiError::iam)?;
+        .map_err(AppError::from)?;
 
     Ok(ApiOk::data(AssignUserRolesRes {}))
 }

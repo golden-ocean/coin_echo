@@ -11,7 +11,10 @@ use validator::Validate;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // 权限更新 (Update Permission)
@@ -87,15 +90,15 @@ pub async fn update_permission(
     State(state): State<CommandState>,
     ctx: SecurityContext,
     Json(req): Json<UpdatePermissionReq>,
-) -> Result<ApiOk<UpdatePermissionRes>, ApiError<AppError>> {
+) -> Result<ApiOk<UpdatePermissionRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::permission::update")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let current_operator_id = Some(ctx.id());
 
@@ -120,7 +123,7 @@ pub async fn update_permission(
         command,
     )
     .await
-    .map_err(ApiError::iam)?;
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(UpdatePermissionRes {}))
 }

@@ -6,7 +6,10 @@ use uuid::Uuid;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::QueryState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::QueryState,
+};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct RolePermissionIdsRes {
@@ -29,17 +32,17 @@ pub async fn list_role_permissions(
     Path(id): Path<Uuid>,
     State(state): State<QueryState>,
     ctx: SecurityContext,
-) -> Result<ApiOk<RolePermissionIdsRes>, ApiError<AppError>> {
+) -> Result<ApiOk<RolePermissionIdsRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::role::permissions")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     let permission_ids =
         iam_application::queries::handle_role_permission_ids(&state.reader_pool, id)
             .await
-            .map_err(ApiError::iam)?;
+            .map_err(AppError::from)?;
 
     Ok(ApiOk::data(RolePermissionIdsRes { permission_ids }))
 }

@@ -5,7 +5,10 @@ use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // 角色删除 (Delete Role)
@@ -31,12 +34,12 @@ pub async fn delete_role(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
     ctx: SecurityContext,
-) -> Result<ApiOk<DeleteRoleRes>, ApiError<AppError>> {
+) -> Result<ApiOk<DeleteRoleRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::role::delete")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     let command = iam_application::commands::RoleDeleteCommand {
         id,
@@ -45,7 +48,7 @@ pub async fn delete_role(
 
     iam_application::commands::handle_role_delete(&*state.uow_factory, &*state.clock, command)
         .await
-        .map_err(ApiError::iam)?;
+        .map_err(AppError::from)?;
 
     Ok(ApiOk::data(DeleteRoleRes {}))
 }

@@ -7,7 +7,10 @@ use validator::Validate;
 use iam_application::error::AppError;
 use platform_kernel::http::{PaginatedResponse, PaginationParams};
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::QueryState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::QueryState,
+};
 
 // =========================================================================
 // Read 用户多条件可选分页查询 (Get User Page)
@@ -62,15 +65,15 @@ pub async fn page_user(
     State(state): State<QueryState>,
     ctx: SecurityContext,
     Query(req): Query<PageUserReq>,
-) -> Result<ApiOk<PaginatedResponse<PageUserRes>>, ApiError<AppError>> {
+) -> Result<ApiOk<PaginatedResponse<PageUserRes>>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::user::page")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let pagination = PaginationParams::new(
         req.page.unwrap_or(1) as u32,
@@ -87,7 +90,7 @@ pub async fn page_user(
 
     let (records, total) = iam_application::queries::handle_user_page(&state.reader_pool, &query)
         .await
-        .map_err(ApiError::iam)?;
+        .map_err(AppError::from)?;
 
     let paginated = PaginatedResponse::new(
         records

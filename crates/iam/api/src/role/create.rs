@@ -6,7 +6,10 @@ use validator::Validate;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // 角色创建 (Create Role)
@@ -47,15 +50,15 @@ pub async fn create_role(
     State(state): State<CommandState>,
     ctx: SecurityContext,
     Json(req): Json<CreateRoleReq>,
-) -> Result<ApiOk<CreateRoleRes>, ApiError<AppError>> {
-    // state
-    //     .enforcer
-    //     .check(&ctx.id().to_string(), "iam::role::create")
-    //     .await
-    //     .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+) -> Result<ApiOk<CreateRoleRes>, ApiError> {
+    state
+        .enforcer
+        .check(&ctx.id().to_string(), "iam::role::create")
+        .await
+        .map_err(|_| AppError::Forbidden)?;
 
     req.validate()
-        .map_err(|e| ApiError::iam(AppError::Validation(e.to_string())))?;
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     //  组装应用层 Command
     let command = iam_application::commands::RoleCreateCommand {
@@ -68,7 +71,7 @@ pub async fn create_role(
 
     iam_application::commands::handle_role_create(&*state.uow_factory, &*state.clock, command)
         .await
-        .map_err(ApiError::iam)?;
+        .map_err(AppError::from)?;
 
     Ok(ApiOk::data(CreateRoleRes {}))
 }

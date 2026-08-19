@@ -4,12 +4,10 @@ pub mod role;
 pub mod user;
 
 pub mod openapi;
+pub mod response;
 
 mod router;
 mod state;
-
-mod api_error;
-mod api_res;
 
 pub use openapi::IamApiDoc;
 pub use router::{protected_router, public_router};

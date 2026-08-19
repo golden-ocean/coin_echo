@@ -7,7 +7,10 @@ use uuid::Uuid;
 
 use iam_application::error::AppError;
 
-use crate::{api_error::ApiError, api_res::ApiOk, state::CommandState};
+use crate::{
+    response::{ApiError, ApiOk},
+    state::CommandState,
+};
 
 // =========================================================================
 // 权限删除 (Delete Permission)
@@ -34,12 +37,12 @@ pub async fn delete_permission(
     Path(id): Path<Uuid>,
     State(state): State<CommandState>,
     ctx: SecurityContext,
-) -> Result<ApiOk<DeletePermissionRes>, ApiError<AppError>> {
+) -> Result<ApiOk<DeletePermissionRes>, ApiError> {
     state
         .enforcer
         .check(&ctx.id().to_string(), "iam::permission::delete")
         .await
-        .map_err(|_| ApiError::iam(AppError::Unauthorized))?;
+        .map_err(|_| AppError::Forbidden)?;
 
     // 组装应用层 Command
     // 注意：删除前是否存在子节点（has_children）的校验放在应用层 command handler
@@ -56,7 +59,7 @@ pub async fn delete_permission(
         command,
     )
     .await
-    .map_err(ApiError::iam)?;
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(DeletePermissionRes {}))
 }
