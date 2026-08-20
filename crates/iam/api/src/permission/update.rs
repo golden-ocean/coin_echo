@@ -91,12 +91,6 @@ pub async fn update_permission(
     ctx: SecurityContext,
     Json(req): Json<UpdatePermissionReq>,
 ) -> Result<ApiOk<UpdatePermissionRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::permission::update")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

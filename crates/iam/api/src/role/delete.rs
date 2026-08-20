@@ -35,20 +35,19 @@ pub async fn delete_role(
     State(state): State<CommandState>,
     ctx: SecurityContext,
 ) -> Result<ApiOk<DeleteRoleRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::role::delete")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     let command = iam_application::commands::RoleDeleteCommand {
         id,
         operator_id: Some(ctx.id()),
     };
 
-    iam_application::commands::handle_role_delete(&*state.uow_factory, &*state.clock, command)
-        .await
-        .map_err(AppError::from)?;
+    iam_application::commands::handle_role_delete(
+        &*state.uow_factory,
+        &*state.policy_service,
+        &*state.clock,
+        command,
+    )
+    .await
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(DeleteRoleRes {}))
 }

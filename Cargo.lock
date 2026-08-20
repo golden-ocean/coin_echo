@@ -1360,7 +1360,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
- "futures",
  "iam_domain",
  "platform_kernel",
  "sqlx",
@@ -2091,9 +2090,12 @@ dependencies = [
 name = "platform_middleware"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum",
  "bytes",
+ "casbin",
  "dashmap",
+ "futures",
  "http",
  "platform_config",
  "platform_kernel",

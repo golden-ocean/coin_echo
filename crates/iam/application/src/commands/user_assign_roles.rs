@@ -1,19 +1,19 @@
 use crate::{
     error::AppError,
-    ports::{PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
+    ports::{PolicyService, PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
 };
 use iam_domain::id::{RoleId, UserId};
 use uuid::Uuid;
 
 pub struct UserAssignRolesCommand {
     pub user_id: Uuid,
-    /// 该用户应拥有的完整角色 ID 集合（全量替换）
     pub role_ids: Vec<Uuid>,
     pub operator_id: Option<Uuid>,
 }
 
 pub async fn handle_user_assign_roles(
     uow_factory: &dyn UnitOfWorkFactory,
+    policy_service: &dyn PolicyService,
     cmd: UserAssignRolesCommand,
 ) -> Result<(), AppError> {
     let user_id_vo = UserId::from_uuid(cmd.user_id);
@@ -49,6 +49,8 @@ pub async fn handle_user_assign_roles(
             })
         })
         .await?;
+
+    policy_service.reload().await?;
 
     // iam_user_role 同样没有审计字段，记录结构化日志作为操作痕迹补充
     tracing::info!(

@@ -47,21 +47,19 @@ pub async fn assign_role_permissions(
     ctx: SecurityContext,
     Json(req): Json<AssignRolePermissionsReq>,
 ) -> Result<ApiOk<AssignRolePermissionsRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::role::assign_permissions")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     let command = iam_application::commands::RoleAssignPermissionsCommand {
         role_id: id,
         permission_ids: req.permission_ids,
         operator_id: Some(ctx.id()),
     };
 
-    iam_application::commands::handle_role_assign_permissions(&*state.uow_factory, command)
-        .await
-        .map_err(AppError::from)?;
+    iam_application::commands::handle_role_assign_permissions(
+        &*state.uow_factory,
+        &*state.policy_service,
+        command,
+    )
+    .await
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(AssignRolePermissionsRes {}))
 }

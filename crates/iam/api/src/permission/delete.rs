@@ -38,12 +38,6 @@ pub async fn delete_permission(
     State(state): State<CommandState>,
     ctx: SecurityContext,
 ) -> Result<ApiOk<DeletePermissionRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::permission::delete")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     // 组装应用层 Command
     // 注意：删除前是否存在子节点（has_children）的校验放在应用层 command handler
     // 中完成 —— 仓储层已提供 PermissionRepository::has_children 用于该前置检查，
@@ -55,6 +49,7 @@ pub async fn delete_permission(
 
     iam_application::commands::handle_permission_delete(
         &*state.uow_factory,
+        &*state.policy_service,
         &*state.clock,
         command,
     )

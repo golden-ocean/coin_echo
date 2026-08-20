@@ -35,7 +35,7 @@ pub async fn build_state() -> anyhow::Result<AppState> {
     let password_hasher = PasswordHasher::new(&password_cfg)?;
 
     let adapter = CasbinAdapter::new(pools.read.clone());
-    let casbin = Arc::new(CasbinEnforcer::with_adapter(adapter).await?);
+    let casbin_enforcer = Arc::new(CasbinEnforcer::with_adapter(adapter).await?);
 
     tracing::info!("安全组件（jwt/password/casbin）已就绪");
 
@@ -43,7 +43,7 @@ pub async fn build_state() -> anyhow::Result<AppState> {
         pools,
         cache,
         jwt,
-        casbin,
+        casbin_enforcer,
         password_hasher,
         clock,
     })

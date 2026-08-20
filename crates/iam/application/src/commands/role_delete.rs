@@ -1,6 +1,6 @@
 use crate::{
     error::AppError,
-    ports::{PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
+    ports::{PolicyService, PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
 };
 use iam_domain::id::RoleId;
 use platform_kernel::time::Clock;
@@ -13,6 +13,7 @@ pub struct RoleDeleteCommand {
 
 pub async fn handle_role_delete(
     uow_factory: &dyn UnitOfWorkFactory,
+    policy_service: &dyn PolicyService,
     clock: &dyn Clock,
     cmd: RoleDeleteCommand,
 ) -> Result<(), AppError> {
@@ -34,5 +35,9 @@ pub async fn handle_role_delete(
                 Ok(())
             })
         })
-        .await
+        .await?;
+
+    policy_service.reload().await?;
+
+    Ok(())
 }

@@ -62,12 +62,6 @@ pub async fn create_user(
     ctx: SecurityContext,
     Json(req): Json<CreateUserReq>,
 ) -> Result<ApiOk<CreateUserRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::user::create")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

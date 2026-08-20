@@ -1,6 +1,6 @@
 use crate::{
     error::AppError,
-    ports::{PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
+    ports::{PolicyService, PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
 };
 use iam_domain::id::{PermissionId, RoleId};
 use uuid::Uuid;
@@ -14,6 +14,7 @@ pub struct RoleAssignPermissionsCommand {
 
 pub async fn handle_role_assign_permissions(
     uow_factory: &dyn UnitOfWorkFactory,
+    policy_service: &dyn PolicyService,
     cmd: RoleAssignPermissionsCommand,
 ) -> Result<(), AppError> {
     let role_id_vo = RoleId::from_uuid(cmd.role_id);
@@ -54,6 +55,8 @@ pub async fn handle_role_assign_permissions(
         })
         .await?;
 
+    policy_service.reload().await?;
+
     // iam_role_permission 表没有 created_by/updated_by 审计字段（纯关系表），
     // 用结构化日志记录一条操作痕迹作为审计补充，避免这类敏感操作完全无迹可查
     tracing::info!(
@@ -77,4 +80,3 @@ mod tests {
     //   （即之前已校验通过的权限也不应该被写入）
     // - test_assign_permissions_empty_list：permission_ids 为空数组，应该清空该角色的所有权限
 }
-

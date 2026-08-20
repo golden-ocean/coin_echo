@@ -10,8 +10,6 @@ license.workspace = true
 platform_kernel = { workspace = true }
 iam_domain = { workspace = true }
 
-#
-futures = { workspace = true }
 # 异步
 async-trait = { workspace = true }
 # 数据库

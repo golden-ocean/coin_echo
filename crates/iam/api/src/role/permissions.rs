@@ -1,5 +1,4 @@
 use axum::extract::{Path, State};
-use platform_security::context::SecurityContext;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -31,14 +30,7 @@ pub struct RolePermissionIdsRes {
 pub async fn list_role_permissions(
     Path(id): Path<Uuid>,
     State(state): State<QueryState>,
-    ctx: SecurityContext,
 ) -> Result<ApiOk<RolePermissionIdsRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::role::permissions")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     let permission_ids =
         iam_application::queries::handle_role_permission_ids(&state.reader_pool, id)
             .await

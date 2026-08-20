@@ -1,14 +1,14 @@
 use platform_kernel::time::Clock;
-use platform_security::casbin::CasbinEnforcer;
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use iam_application::ports::{PasswordHasher, StaffNoGenerator, TokenService, UnitOfWorkFactory};
+use iam_application::ports::{
+    PasswordHasher, PolicyService, StaffNoGenerator, TokenService, UnitOfWorkFactory,
+};
 
 #[derive(Clone)]
 pub struct QueryState {
     pub reader_pool: PgPool,
-    pub enforcer: Arc<CasbinEnforcer>,
 }
 
 #[derive(Clone)]
@@ -16,9 +16,9 @@ pub struct CommandState {
     pub uow_factory: Arc<dyn UnitOfWorkFactory>,
     pub password_hasher: Arc<dyn PasswordHasher>,
     pub staff_no_generator: Arc<dyn StaffNoGenerator>,
-    pub clock: Arc<dyn Clock>,
+    pub policy_service: Arc<dyn PolicyService>,
     pub token_service: Arc<dyn TokenService>,
-    pub enforcer: Arc<CasbinEnforcer>,
+    pub clock: Arc<dyn Clock>,
 }
 
 #[derive(Clone)]
@@ -34,21 +34,18 @@ impl IamState {
         password_hasher: Arc<dyn PasswordHasher>,
         staff_no_generator: Arc<dyn StaffNoGenerator>,
         clock: Arc<dyn Clock>,
+        policy_service: Arc<dyn PolicyService>,
         token_service: Arc<dyn TokenService>,
-        enforcer: Arc<CasbinEnforcer>,
     ) -> Self {
         Self {
-            query_state: QueryState {
-                reader_pool,
-                enforcer: enforcer.clone(),
-            },
+            query_state: QueryState { reader_pool },
             command_state: CommandState {
                 uow_factory,
                 password_hasher,
                 staff_no_generator,
                 clock,
+                policy_service,
                 token_service,
-                enforcer,
             },
         }
     }

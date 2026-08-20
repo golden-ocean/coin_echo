@@ -61,12 +61,6 @@ pub async fn update_user(
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::user::update")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     let command = iam_application::commands::UserUpdateCommand {
         id,
         name: req.name,

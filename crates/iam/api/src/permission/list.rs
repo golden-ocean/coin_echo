@@ -1,5 +1,4 @@
 use axum::extract::{Query, State};
-use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
@@ -80,15 +79,8 @@ pub struct ListPermissionRes {
 )]
 pub async fn list_permission(
     State(state): State<QueryState>,
-    ctx: SecurityContext,
     Query(req): Query<ListPermissionReq>,
 ) -> Result<ApiOk<Vec<ListPermissionRes>>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::permission::list")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

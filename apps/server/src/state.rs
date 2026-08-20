@@ -10,6 +10,6 @@ pub struct AppState {
     pub cache: platform_cache::redis::RedisPool,
     pub jwt: Arc<JwtCodec>,
     pub password_hasher: PasswordHasher,
-    pub casbin: Arc<CasbinEnforcer>,
+    pub casbin_enforcer: Arc<CasbinEnforcer>,
     pub clock: Arc<dyn Clock>,
 }

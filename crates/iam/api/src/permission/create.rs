@@ -87,12 +87,6 @@ pub async fn create_permission(
     ctx: SecurityContext,
     Json(req): Json<CreatePermissionReq>,
 ) -> Result<ApiOk<CreatePermissionRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::permission::create")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

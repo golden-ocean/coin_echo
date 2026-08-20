@@ -1,11 +1,10 @@
 use axum::extract::{Query, State};
-use platform_kernel::http::{PaginatedResponse, PaginationParams};
-use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
 use iam_application::error::AppError;
+use platform_kernel::http::{PaginatedResponse, PaginationParams};
 
 use crate::{
     response::{ApiError, ApiOk},
@@ -66,15 +65,8 @@ pub struct PageRoleRes {
 )]
 pub async fn page_role(
     State(state): State<QueryState>,
-    ctx: SecurityContext,
     Query(req): Query<PageRoleReq>,
 ) -> Result<ApiOk<PaginatedResponse<PageRoleRes>>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::role::page")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

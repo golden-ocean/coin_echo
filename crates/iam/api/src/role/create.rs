@@ -51,12 +51,6 @@ pub async fn create_role(
     ctx: SecurityContext,
     Json(req): Json<CreateRoleReq>,
 ) -> Result<ApiOk<CreateRoleRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::role::create")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

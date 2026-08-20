@@ -6,6 +6,7 @@ mod user_repository;
 mod user_role_repository;
 
 mod password_hasher;
+mod policy_service;
 mod staff_no_generator;
 mod token_service;
 mod uow;
@@ -18,6 +19,7 @@ pub use user_role_repository::UserRoleRepository;
 
 pub use error::PortError;
 pub use password_hasher::{PasswordHasher, PasswordHasherError};
+pub use policy_service::PolicyService;
 pub use staff_no_generator::StaffNoGenerator;
 pub use token_service::{TokenPair, TokenService, TokenServiceError};
 pub use uow::{UnitOfWork, UnitOfWorkError, UnitOfWorkFactory, UnitOfWorkFactoryExt, UowFuture};

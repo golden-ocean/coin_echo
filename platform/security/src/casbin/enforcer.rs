@@ -3,13 +3,12 @@ use tokio::sync::RwLock;
 
 use crate::casbin::error::CasbinError;
 
-/// 内嵌 RBAC 模型：用户→角色→权限，路径用 keyMatch 通配。
 pub const RBAC_MODEL: &str = r#"
 [request_definition]
-r = sub, obj, act
+r = sub, obj
 
 [policy_definition]
-p = sub, obj, act
+p = sub, obj
 
 [role_definition]
 g = _, _

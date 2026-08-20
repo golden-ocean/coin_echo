@@ -1,5 +1,4 @@
 use axum::extract::{Query, State};
-use platform_security::context::SecurityContext;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
@@ -63,15 +62,8 @@ pub struct PageUserRes {
 )]
 pub async fn page_user(
     State(state): State<QueryState>,
-    ctx: SecurityContext,
     Query(req): Query<PageUserReq>,
 ) -> Result<ApiOk<PaginatedResponse<PageUserRes>>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::user::page")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

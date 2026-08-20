@@ -35,20 +35,19 @@ pub async fn delete_user(
     State(state): State<CommandState>,
     ctx: SecurityContext,
 ) -> Result<ApiOk<DeleteUserRes>, ApiError> {
-    state
-        .enforcer
-        .check(&ctx.id().to_string(), "iam::user::delete")
-        .await
-        .map_err(|_| AppError::Forbidden)?;
-
     let command = iam_application::commands::UserDeleteCommand {
         id,
         operator_id: Some(ctx.id()),
     };
 
-    iam_application::commands::handle_user_delete(&*state.uow_factory, &*state.clock, command)
-        .await
-        .map_err(AppError::from)?;
+    iam_application::commands::handle_user_delete(
+        &*state.uow_factory,
+        &*state.policy_service,
+        &*state.clock,
+        command,
+    )
+    .await
+    .map_err(AppError::from)?;
 
     Ok(ApiOk::data(DeleteUserRes {}))
 }

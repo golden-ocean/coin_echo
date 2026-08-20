@@ -1,6 +1,6 @@
 use crate::{
     error::AppError,
-    ports::{PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
+    ports::{PolicyService, PortError, UnitOfWorkFactory, UnitOfWorkFactoryExt},
 };
 use iam_domain::id::PermissionId;
 use platform_kernel::time::Clock;
@@ -13,6 +13,7 @@ pub struct PermissionDeleteCommand {
 
 pub async fn handle_permission_delete(
     uow_factory: &dyn UnitOfWorkFactory,
+    policy_service: &dyn PolicyService,
     clock: &dyn Clock,
     cmd: PermissionDeleteCommand,
 ) -> Result<(), AppError> {
@@ -47,5 +48,9 @@ pub async fn handle_permission_delete(
                 Ok(())
             })
         })
-        .await
+        .await?;
+
+    policy_service.reload().await?;
+
+    Ok(())
 }

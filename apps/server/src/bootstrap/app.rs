@@ -16,6 +16,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
 
     let v1_protected = Router::new()
         .nest("/iam", iam_routers.protected)
+        // 临时 todo
         .layer(axum::Extension(SecurityContext::new(uuid::Uuid::nil())));
     // .layer(platform_middleware::JwtAuthLayer::new(Arc::clone(
     //     &state.jwt,
