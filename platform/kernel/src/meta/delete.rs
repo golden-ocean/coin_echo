@@ -15,10 +15,15 @@ impl DeleteMeta {
         }
     }
 
-    pub fn delete(&mut self, deleter_id: Option<Uuid>, now: DateTime<Utc>) {
+    pub fn delete(&mut self, deleter_id: Option<Uuid>, now: DateTime<Utc>) -> Self {
         if self.deleted_at.is_none() {
-            self.deleted_at = Some(now);
-            self.deleted_by = deleter_id;
+            Self {
+                deleted_at: Some(now),
+                deleted_by: deleter_id,
+                ..self.clone()
+            }
+        } else {
+            self.clone()
         }
     }
 

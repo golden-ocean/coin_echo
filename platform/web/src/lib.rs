@@ -1,5 +1,5 @@
 mod error;
 mod response;
 
-pub use error::ApiError;
-pub use response::ApiOk;
+pub use error::PlatformWebError;
+pub use response::PlatformWebOk;

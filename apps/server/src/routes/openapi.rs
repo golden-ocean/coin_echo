@@ -14,9 +14,6 @@ use super::health;
 
 #[derive(OpenApi)]
 #[openapi(
-    nest(
-        (path = "/api/v1/iam", api = iam_api::IamApiDoc),
-    ),
     paths(health::healthz),
     components(schemas(health::HealthStatus)),
     tags((name = "system", description = "系统级端点（健康检查等）")),
@@ -37,7 +34,11 @@ pub fn router() -> Router {
 }
 
 async fn serve_spec() -> Json<utoipa::openapi::OpenApi> {
-    Json(ApiDoc::openapi())
+    let doc = ApiDoc::openapi()
+        .nest("/api/v1/iam", iam_api::openapi::IamApiDoc::openapi())
+        .nest("/api/v1/sys", sys_api::openapi::SysApiDoc::openapi());
+
+    Json(doc)
 }
 
 // /// 把当前 OpenAPI spec 序列化并写入指定路径。

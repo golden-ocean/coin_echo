@@ -4,9 +4,10 @@ use platform_kernel::http::Res;
 use platform_middleware::RequestContext;
 use serde::Serialize;
 
-pub struct ApiOk<T: Serialize>(Res<T>);
+#[derive(utoipa::ToSchema)]
+pub struct PlatformWebOk<T: Serialize>(Res<T>);
 
-impl<T: Serialize> ApiOk<T> {
+impl<T: Serialize> PlatformWebOk<T> {
     pub fn data(data: T) -> Self {
         let trace_id = RequestContext::current_or_default().trace_id.to_string();
         let trace_id = (!trace_id.is_empty()).then_some(trace_id);
@@ -14,7 +15,7 @@ impl<T: Serialize> ApiOk<T> {
     }
 }
 
-impl ApiOk<()> {
+impl PlatformWebOk<()> {
     pub fn empty() -> Self {
         let trace_id = RequestContext::current_or_default().trace_id.to_string();
         let trace_id = (!trace_id.is_empty()).then_some(trace_id);
@@ -22,7 +23,7 @@ impl ApiOk<()> {
     }
 }
 
-impl<T: Serialize> IntoResponse for ApiOk<T> {
+impl<T: Serialize> IntoResponse for PlatformWebOk<T> {
     fn into_response(self) -> Response {
         Json(self.0).into_response()
     }

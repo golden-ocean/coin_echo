@@ -30,9 +30,12 @@ impl AuditMeta {
     /// # Params
     /// - operator_id: 本次更新操作人UUID
     /// - now: 当前UTC时间戳
-    pub fn update<T: Into<Uuid>>(&mut self, operator_id: Option<T>, now: DateTime<Utc>) {
-        self.updated_at = now;
-        self.updated_by = operator_id.map(Into::into);
+    pub fn update<T: Into<Uuid>>(&self, operator_id: Option<T>, now: DateTime<Utc>) -> Self {
+        Self {
+            updated_at: now,
+            updated_by: operator_id.map(Into::into),
+            ..self.clone()
+        }
     }
 
     /// 从数据库中恢复审计元数据
@@ -83,7 +86,7 @@ mod tests {
         let creator = Some(Uuid::now_v7());
         let now = Utc::now();
         // 构造审计元数据（自动取当前时间）
-        let mut audit = AuditMeta::new(creator, now);
+        let audit = AuditMeta::new(creator, now);
 
         // 校验创建阶段：创建/更新时间、操作人完全一致
         assert_eq!(audit.created_by(), creator);
@@ -107,7 +110,7 @@ mod tests {
     fn test_audit_anonymous_creator() {
         // 匿名创建，无操作人ID
         let now = Utc::now();
-        let mut audit = AuditMeta::new(None::<Uuid>, now);
+        let audit = AuditMeta::new(None::<Uuid>, now);
 
         assert!(audit.created_by().is_none());
         assert!(audit.updated_by().is_none());
@@ -128,7 +131,7 @@ mod tests {
             .with_timezone(&Utc);
         let uid = Some(Uuid::now_v7());
 
-        let mut audit = AuditMeta::new(uid, fixed_time);
+        let audit = AuditMeta::new(uid, fixed_time);
         assert_eq!(audit.created_at(), fixed_time);
         assert_eq!(audit.updated_at(), fixed_time);
 

@@ -1,9 +1,6 @@
-//! IAM-Role 模块的 OpenAPI 文档聚合。
-
 use utoipa::OpenApi;
 
 use crate::role::{
-    self,
     create::{CreateRoleReq, CreateRoleRes},
     delete::DeleteRoleRes,
     page::{PageRoleReq, PageRoleRes},
@@ -13,11 +10,11 @@ use crate::role::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        role::create::create_role,
-        role::page::page_role,
-        role::update::update_role,
-        role::delete::delete_role,
-        role::permissions::list_role_permissions,
+        crate::role::create::create_role,
+        crate::role::page::page_role,
+        crate::role::update::update_role,
+        crate::role::delete::delete_role,
+        crate::role::permissions::list_role_permissions,
     ),
     components(schemas(
          CreateRoleReq,

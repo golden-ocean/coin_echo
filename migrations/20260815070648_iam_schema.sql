@@ -53,6 +53,7 @@ CREATE TABLE iam_user (
 );
 
 COMMENT ON TABLE iam_user IS '系统用户主表';
+COMMENT ON COLUMN iam_user.id IS '用户ID';
 COMMENT ON COLUMN iam_user.username IS '登录账号';
 COMMENT ON COLUMN iam_user.staff_no IS '员工工号';
 COMMENT ON COLUMN iam_user.name IS '名字';
@@ -115,6 +116,7 @@ CREATE TABLE iam_role (
 );
 
 COMMENT ON TABLE iam_role IS '系统角色表';
+COMMENT ON COLUMN iam_role.id IS '角色ID';
 COMMENT ON COLUMN iam_role.name IS '角色名称 (如: 超级管理员)';
 COMMENT ON COLUMN iam_role.code IS '角色编码 (如: ROOT, ADMIN)';
 COMMENT ON COLUMN iam_role.is_builtin IS '是否为系统内置角色 (内置角色不可被删除和随意修改)';
@@ -192,11 +194,11 @@ CREATE TABLE iam_permission (
     created_by UUID,
     updated_by UUID,
     deleted_at TIMESTAMPTZ,
-    deleted_by UUID,
-    version BIGINT NOT NULL DEFAULT 0
+    deleted_by UUID
 );
 
 COMMENT ON TABLE iam_permission IS '系统权限/菜单表';
+COMMENT ON COLUMN iam_permission.id IS '权限ID';
 COMMENT ON COLUMN iam_permission.parent_id IS '父级权限ID，NULL表示顶级';
 COMMENT ON COLUMN iam_permission.name IS '权限名称 (如: 用户管理, 新增用户)';
 COMMENT ON COLUMN iam_permission.code IS '权限标识/编码 (如: iam:user:add)';
@@ -216,7 +218,6 @@ COMMENT ON COLUMN iam_permission.created_by IS '创建者';
 COMMENT ON COLUMN iam_permission.updated_by IS '更新者';
 COMMENT ON COLUMN iam_permission.deleted_at IS '删除时间';
 COMMENT ON COLUMN iam_permission.deleted_by IS '删除者';
-COMMENT ON COLUMN iam_permission.version IS '版本号';
 
 
 CREATE UNIQUE INDEX uk_iam_permission_code ON iam_permission (code) WHERE deleted_at IS NULL;

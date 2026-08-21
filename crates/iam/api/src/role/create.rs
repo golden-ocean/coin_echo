@@ -32,7 +32,7 @@ pub struct CreateRoleReq {
     remark: Option<String>,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct CreateRoleRes {}
 
 #[utoipa::path(

@@ -39,15 +39,6 @@ impl<'tx, 'c> PgPermissionRepository<'tx, 'c> {
                     }
                 };
             }
-            if db_err
-                .code()
-                .map(|c| c == "40001" || c == "40P01")
-                .unwrap_or(false)
-            {
-                return PortError::VersionConflict {
-                    entity: "permission",
-                };
-            }
         }
         if matches!(e, sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed) {
             return PortError::Infrastructure(e.to_string());
@@ -67,12 +58,12 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
                     id, parent_id, name, code, kind,
                     route_path, component, icon, api_method, api_path,
                     is_builtin, remark, sort, status,
-                    created_at, created_by, updated_at, updated_by, version
+                    created_at, created_by, updated_at, updated_by
                 ) VALUES (
                     $1,$2,$3,$4,$5,
                     $6,$7,$8,$9,$10,
                     $11,$12,$13,$14,
-                    $15,$16,$17,$18,$19
+                    $15,$16,$17,$18
                 )
             "#,
             m.id,
@@ -93,7 +84,6 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
             m.created_by,
             m.updated_at,
             m.updated_by,
-            m.version,
         )
         .execute(&mut **self.tx)
         .await
@@ -104,15 +94,14 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
 
     async fn update(&mut self, permission: &Permission) -> Result<(), PortError> {
         let m = PermissionModel::from(permission);
-        let old_version = m.version - 1;
         let result = sqlx::query!(
             r#"
                 UPDATE iam_permission SET
                     parent_id = $2, name = $3, code = $4, kind = $5,
                     route_path = $6, component = $7, icon = $8, api_method = $9, api_path = $10,
                     remark = $11, sort = $12, status = $13,
-                    updated_at = $14, updated_by = $15, version = $16
-                WHERE id = $1 AND version = $17 AND deleted_at IS NULL
+                    updated_at = $14, updated_by = $15
+                WHERE id = $1 AND deleted_at IS NULL
             "#,
             m.id,
             m.parent_id,
@@ -129,15 +118,13 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
             m.status,
             m.updated_at,
             m.updated_by,
-            m.version,
-            old_version
         )
         .execute(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
         if result.rows_affected() == 0 {
-            return Err(PortError::VersionConflict {
+            return Err(PortError::NotFound {
                 entity: "permission",
             });
         }
@@ -146,28 +133,25 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
 
     async fn soft_delete(&mut self, permission: &Permission) -> Result<(), PortError> {
         let m = PermissionModel::from(permission);
-        let old_version = m.version - 1;
         let result = sqlx::query!(
             r#"
                 UPDATE iam_permission SET
                     deleted_at = $2, deleted_by = $3,
-                    updated_at = $4, updated_by = $5, version = $6
-                WHERE id = $1 AND version = $7 AND deleted_at IS NULL
+                    updated_at = $4, updated_by = $5
+                WHERE id = $1 AND deleted_at IS NULL
             "#,
             m.id,
             m.deleted_at,
             m.deleted_by,
             m.updated_at,
             m.updated_by,
-            m.version,
-            old_version,
         )
         .execute(&mut **self.tx)
         .await
         .map_err(Self::map_sqlx_error)?;
 
         if result.rows_affected() == 0 {
-            return Err(PortError::VersionConflict {
+            return Err(PortError::NotFound {
                 entity: "permission",
             });
         }
@@ -187,7 +171,7 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
                     route_path, component, icon, api_method, api_path,
                     is_builtin, remark, sort, status,
                     created_at, created_by, updated_at, updated_by,
-                    deleted_at, deleted_by, version
+                    deleted_at, deleted_by
                 FROM iam_permission
                 WHERE id = $1 AND deleted_at IS NULL
             "#,
@@ -212,7 +196,7 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
                     route_path, component, icon, api_method, api_path,
                     is_builtin, remark, sort, status,
                     created_at, created_by, updated_at, updated_by,
-                    deleted_at, deleted_by, version
+                    deleted_at, deleted_by
                 FROM iam_permission
                 WHERE code = $1 AND deleted_at IS NULL
             "#,
@@ -265,7 +249,7 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
                     route_path, component, icon, api_method, api_path,
                     is_builtin, remark, sort, status,
                     created_at, created_by, updated_at, updated_by,
-                    deleted_at, deleted_by, version
+                    deleted_at, deleted_by
                 FROM iam_permission
                 WHERE deleted_at IS NULL
                   AND (
@@ -300,8 +284,6 @@ impl<'tx, 'c> PermissionRepository for PgPermissionRepository<'tx, 'c> {
         ancestor_id: &PermissionId,
         descendant_id: &PermissionId,
     ) -> Result<bool, PortError> {
-        // 递归 CTE：从 descendant_id 出发沿 parent_id 一路向上找祖先，
-        // 判断 ancestor_id 是否出现在这条向上的路径里。
         let result = sqlx::query_scalar!(
             r#"
                 WITH RECURSIVE ancestors AS (

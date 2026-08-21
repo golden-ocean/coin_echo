@@ -71,6 +71,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "sys_api",
+ "sys_infrastructure",
  "tempfile",
  "thiserror 2.0.19",
  "tokio",
@@ -1859,6 +1861,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "org_api"
+version = "0.1.0"
+
+[[package]]
+name = "org_application"
+version = "0.1.0"
+
+[[package]]
+name = "org_domain"
+version = "0.1.0"
+
+[[package]]
+name = "org_infrastructure"
+version = "0.1.0"
+
+[[package]]
 name = "p256"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2154,6 +2172,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.19",
  "tokio",
+ "utoipa",
 ]
 
 [[package]]
@@ -3137,6 +3156,60 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "sys_api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "platform_kernel",
+ "platform_middleware",
+ "platform_security",
+ "platform_web",
+ "serde",
+ "sqlx",
+ "sys_application",
+ "utoipa",
+ "uuid",
+ "validator",
+]
+
+[[package]]
+name = "sys_application"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "platform_kernel",
+ "sqlx",
+ "sys_domain",
+ "thiserror 2.0.19",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "sys_domain"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "platform_kernel",
+ "thiserror 2.0.19",
+ "uuid",
+]
+
+[[package]]
+name = "sys_infrastructure"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "platform_kernel",
+ "sqlx",
+ "sys_application",
+ "sys_domain",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

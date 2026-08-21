@@ -1,9 +1,6 @@
-//! IAM-User 模块的 OpenAPI 文档聚合。
-
 use utoipa::OpenApi;
 
 use crate::user::{
-    self,
     create::{CreateUserReq, CreateUserRes},
     delete::DeleteUserRes,
     page::{PageUserReq, PageUserRes},
@@ -13,11 +10,11 @@ use crate::user::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        user::create::create_user,
-        user::page::page_user,
-        user::update::update_user,
-        user::delete::delete_user,
-        user::roles::list_user_roles,
+        crate::user::create::create_user,
+        crate::user::page::page_user,
+        crate::user::update::update_user,
+        crate::user::delete::delete_user,
+        crate::user::roles::list_user_roles,
     ),
     components(schemas(
          CreateUserReq,

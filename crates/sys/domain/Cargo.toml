@@ -1,0 +1,17 @@
+[package]
+name = "sys_domain"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+platform_kernel = { workspace = true }
+
+# 外部
+thiserror = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true

@@ -15,7 +15,15 @@ members = [
     "crates/iam/application",
     "crates/iam/domain",
     "crates/iam/infrastructure",
-    "crates/iam/api"
+    "crates/iam/api",
+    "crates/org/application",
+    "crates/org/domain",
+    "crates/org/infrastructure",
+    "crates/org/api",
+    "crates/sys/application",
+    "crates/sys/domain",
+    "crates/sys/infrastructure",
+    "crates/sys/api",
 ]
 
 [workspace.package]
@@ -42,6 +50,16 @@ iam_application = { path = "crates/iam/application" }
 iam_domain = { path = "crates/iam/domain" }
 iam_infrastructure = { path = "crates/iam/infrastructure" }
 iam_api = { path = "crates/iam/api" }
+# org 模块
+org_application = { path = "crates/org/application" }
+org_domain = { path = "crates/org/domain" }
+org_infrastructure = { path = "crates/org/infrastructure" }
+org_api = { path = "crates/org/api" }
+# sys 模块
+sys_application = { path = "crates/sys/application" }
+sys_domain = { path = "crates/sys/domain" }
+sys_infrastructure = { path = "crates/sys/infrastructure" }
+sys_api = { path = "crates/sys/api" }
 
 # 核心框架与运行时
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "io-util", "sync", "fs"] }

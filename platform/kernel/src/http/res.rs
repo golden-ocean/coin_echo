@@ -8,7 +8,7 @@
 use serde::Serialize;
 
 /// 成功响应。
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct Res<T: Serialize> {
     /// 业务数据。`None` 用于"操作成功但无返回内容"的场景（如 DELETE）。
     #[serde(skip_serializing_if = "Option::is_none")]

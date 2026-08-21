@@ -1,0 +1,22 @@
+[package]
+name = "sys_infrastructure"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+platform_kernel = { workspace = true }
+
+sys_application = { workspace = true }
+sys_domain = { workspace = true }
+
+# 第三方
+async-trait = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

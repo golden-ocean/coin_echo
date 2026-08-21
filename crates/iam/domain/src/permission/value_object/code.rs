@@ -117,6 +117,15 @@ impl TryFrom<String> for PermissionCode {
     }
 }
 
+impl TryFrom<&String> for PermissionCode {
+    type Error = PermissionCodeError;
+
+    #[inline]
+    fn try_from(s: &String) -> Result<Self, Self::Error> {
+        Self::new(s.as_str())
+    }
+}
+
 impl AsRef<str> for PermissionCode {
     fn as_ref(&self) -> &str {
         self.as_str()

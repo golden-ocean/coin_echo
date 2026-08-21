@@ -104,6 +104,15 @@ impl TryFrom<String> for PermissionKind {
     }
 }
 
+impl TryFrom<&String> for PermissionKind {
+    type Error = PermissionKindError;
+
+    #[inline]
+    fn try_from(s: &String) -> Result<Self, Self::Error> {
+        Self::from_str(s.as_str())
+    }
+}
+
 impl AsRef<str> for PermissionKind {
     fn as_ref(&self) -> &str {
         self.as_str()

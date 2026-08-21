@@ -115,6 +115,15 @@ impl TryFrom<String> for PermissionName {
     }
 }
 
+impl TryFrom<&String> for PermissionName {
+    type Error = PermissionNameError;
+
+    #[inline]
+    fn try_from(s: &String) -> Result<Self, Self::Error> {
+        Self::new(s.as_str())
+    }
+}
+
 impl AsRef<str> for PermissionName {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -210,4 +219,3 @@ mod tests {
         assert_eq!(err_invalid.detail().unwrap(), "权限名称格式无效: 'name#'");
     }
 }
-

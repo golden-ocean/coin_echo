@@ -11,7 +11,6 @@ use iam_domain::{
     },
 };
 use platform_kernel::time::Clock;
-use std::str::FromStr;
 use uuid::Uuid;
 
 pub struct PermissionCreateCommand {
@@ -34,13 +33,13 @@ pub async fn handle_permission_create(
     clock: &dyn Clock,
     cmd: PermissionCreateCommand,
 ) -> Result<(), AppError> {
-    let name_vo = PermissionName::from_str(&cmd.name).map_err(DomainError::from)?;
-    let code_vo = PermissionCode::from_str(&cmd.code).map_err(DomainError::from)?;
-    let kind_vo = PermissionKind::from_str(&cmd.kind).map_err(DomainError::from)?;
+    let name_vo = PermissionName::try_from(cmd.name).map_err(DomainError::from)?;
+    let code_vo = PermissionCode::try_from(cmd.code).map_err(DomainError::from)?;
+    let kind_vo = PermissionKind::try_from(cmd.kind).map_err(DomainError::from)?;
     let api_method_vo = cmd
         .api_method
         .as_deref()
-        .map(ApiMethod::from_str)
+        .map(ApiMethod::try_from)
         .transpose()
         .map_err(DomainError::from)?;
     let parent_id_vo = cmd.parent_id.map(PermissionId::from_uuid);

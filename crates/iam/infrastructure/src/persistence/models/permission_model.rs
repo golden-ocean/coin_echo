@@ -11,7 +11,7 @@ use iam_domain::{
         value_object::{ApiMethod, PermissionCode, PermissionKind, PermissionName},
     },
 };
-use platform_kernel::meta::{AuditMeta, DeleteMeta, Status, VersionMeta};
+use platform_kernel::meta::{AuditMeta, DeleteMeta, Status};
 
 /// `iam_permission` 表的数据库行模型，负责领域对象 <-> 数据库行的双向转换。
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
@@ -36,7 +36,6 @@ pub struct PermissionModel {
     pub updated_by: Option<Uuid>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub deleted_by: Option<Uuid>,
-    pub version: i64,
 }
 
 impl From<&Permission> for PermissionModel {
@@ -62,7 +61,6 @@ impl From<&Permission> for PermissionModel {
             updated_by: p.audit_meta().updated_by(),
             deleted_at: p.delete_meta().deleted_at(),
             deleted_by: p.delete_meta().deleted_by(),
-            version: p.version_meta().value(),
         }
     }
 }
@@ -133,15 +131,6 @@ impl TryFrom<&PermissionModel> for Permission {
         );
         let delete_meta = DeleteMeta::restore(model.deleted_at, model.deleted_by);
 
-        let version_meta: VersionMeta =
-            model
-                .version
-                .try_into()
-                .map_err(|_| PortError::ValueConvert {
-                    field: "version",
-                    value: model.version.to_string(),
-                })?;
-
         // 注意：Permission::restore 不会重新触发 ensure_fields_match_kind 这类
         // 业务级一致性校验（那是 new/update_info 的职责），因为持久化数据一旦
         // 落库，应当被视为历史上已经通过过校验的合法状态，Mapper 只负责结构转换。
@@ -162,12 +151,10 @@ impl TryFrom<&PermissionModel> for Permission {
             status,
             audit_meta,
             delete_meta,
-            version_meta,
         ))
     }
 }
 
-// 顺手补充所有权版本的实现，内部直接委派给引用实现，兼顾两种调用方式
 impl TryFrom<PermissionModel> for Permission {
     type Error = PortError;
 
@@ -213,7 +200,6 @@ mod tests {
             updated_by: Some(op_uuid),
             deleted_at: None,
             deleted_by: None,
-            version: 1,
         }
     }
 
@@ -242,7 +228,6 @@ mod tests {
             updated_by: None,
             deleted_at: None,
             deleted_by: None,
-            version: 1,
         }
     }
 
@@ -308,7 +293,6 @@ mod tests {
         assert_eq!(original_model.api_method, converted_model.api_method);
         assert_eq!(original_model.api_path, converted_model.api_path);
         assert_eq!(original_model.status, converted_model.status);
-        assert_eq!(original_model.version, converted_model.version);
     }
 
     #[test]
@@ -407,8 +391,7 @@ mod tests {
 
     #[test]
     fn test_invalid_version_triggers_port_error() {
-        let mut model = create_valid_api_permission_model();
-        model.version = -1;
+        let model = create_valid_api_permission_model();
 
         let result: Result<Permission, PortError> = (&model).try_into();
 
@@ -465,4 +448,3 @@ mod tests {
         assert_eq!(del_meta.deleted_by(), Some(del_user));
     }
 }
-

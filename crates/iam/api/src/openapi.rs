@@ -1,17 +1,12 @@
 use utoipa::OpenApi;
 
-use crate::auth::AuthApiDoc;
-use crate::permission::PermissionApiDoc;
-use crate::role::RoleApiDoc;
-use crate::user::UserApiDoc;
-
 #[derive(OpenApi)]
 #[openapi(
     nest(
-        (path = "/roles", api = RoleApiDoc),
-        (path = "/users", api = UserApiDoc),
-        (path = "/permissions", api = PermissionApiDoc),
-        (path = "/auth", api = AuthApiDoc),
+        (path = "/roles", api = crate::role::RoleApiDoc),
+        (path = "/users", api = crate::user::UserApiDoc),
+        (path = "/permissions", api = crate::permission::PermissionApiDoc),
+        (path = "/auth", api = crate::auth::AuthApiDoc),
     ),
 )]
 pub struct IamApiDoc;

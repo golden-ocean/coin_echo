@@ -112,7 +112,7 @@ impl Role {
         if let Some(sort) = new_sort {
             self.sort = sort;
         }
-        self.audit_meta.update(operator_id, now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -125,32 +125,40 @@ impl Role {
     ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
 
-        self.audit_meta.update(operator_id, now);
-        self.delete_meta.delete(operator_id, now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
+        self.delete_meta = self.delete_meta.delete(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
 
     /// 启用角色
-    pub fn enable(&mut self, operator_id: Uuid, now: DateTime<Utc>) -> Result<(), DomainError> {
+    pub fn enable(
+        &mut self,
+        operator_id: Option<Uuid>,
+        now: DateTime<Utc>,
+    ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-        if self.status == Status::Enabled {
+        if self.status.is_enabled() {
             return Err(DomainError::RoleStatusAlreadyEnabled { id: self.id });
         }
         self.status = Status::Enabled;
-        self.audit_meta.update(Some(operator_id), now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
 
     /// 禁用角色
-    pub fn disable(&mut self, operator_id: Uuid, now: DateTime<Utc>) -> Result<(), DomainError> {
+    pub fn disable(
+        &mut self,
+        operator_id: Option<Uuid>,
+        now: DateTime<Utc>,
+    ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-        if self.status == Status::Disabled {
+        if self.status.is_disabled() {
             return Err(DomainError::RoleStatusAlreadyDisabled { id: self.id });
         }
         self.status = Status::Disabled;
-        self.audit_meta.update(Some(operator_id), now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -159,12 +167,12 @@ impl Role {
     pub fn assign_permissions(
         &mut self,
         permission_ids: Vec<PermissionId>,
-        operator_id: Uuid,
+        operator_id: Option<Uuid>,
         now: DateTime<Utc>,
     ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
         self.permission_ids = permission_ids;
-        self.audit_meta.update(Some(operator_id), now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -386,19 +394,19 @@ mod role_aggregate_tests {
         );
 
         // 启用
-        role.enable(operator_uuid(), test_now()).unwrap();
+        role.enable(Some(operator_uuid()), test_now()).unwrap();
         assert_eq!(role.status(), Status::Enabled);
 
         // 重复启用报错
-        let err = role.enable(operator_uuid(), test_now()).unwrap_err();
+        let err = role.enable(Some(operator_uuid()), test_now()).unwrap_err();
         assert!(matches!(err, DomainError::RoleStatusAlreadyEnabled { .. }));
 
         // 禁用
-        role.disable(operator_uuid(), test_now()).unwrap();
+        role.disable(Some(operator_uuid()), test_now()).unwrap();
         assert_eq!(role.status(), Status::Disabled);
 
         // 重复禁用报错
-        let err = role.disable(operator_uuid(), test_now()).unwrap_err();
+        let err = role.disable(Some(operator_uuid()), test_now()).unwrap_err();
         assert!(matches!(err, DomainError::RoleStatusAlreadyDisabled { .. }));
     }
 
@@ -460,11 +468,11 @@ mod role_aggregate_tests {
         let pid1 = PermissionId::from_uuid(Uuid::now_v7());
         let pid2 = PermissionId::from_uuid(Uuid::now_v7());
 
-        let _ = role.assign_permissions(vec![pid1, pid2], operator_uuid(), test_now());
+        let _ = role.assign_permissions(vec![pid1, pid2], Some(operator_uuid()), test_now());
         assert_eq!(role.permission_ids().len(), 2);
 
         // 覆盖为空集合
-        let _ = role.assign_permissions(vec![], operator_uuid(), test_now());
+        let _ = role.assign_permissions(vec![], Some(operator_uuid()), test_now());
         assert!(role.permission_ids().is_empty());
     }
 

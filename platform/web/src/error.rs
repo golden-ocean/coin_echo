@@ -10,12 +10,12 @@ use platform_middleware::RequestContext;
 
 /// 把业务错误包装成可直接从 handler 返回的类型。
 #[derive(Debug)]
-pub struct ApiError<E> {
+pub struct PlatformWebError<E> {
     error: E,
     namespace: &'static str,
 }
 
-impl<E: ErrorMeta> ApiError<E> {
+impl<E: ErrorMeta> PlatformWebError<E> {
     pub fn new(error: E, namespace: &'static str) -> Self {
         Self { error, namespace }
     }
@@ -54,15 +54,15 @@ impl<E: ErrorMeta> ApiError<E> {
     }
 }
 
-impl<E: ErrorMeta> fmt::Display for ApiError<E> {
+impl<E: ErrorMeta> fmt::Display for PlatformWebError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}] {}", self.namespace, self.error.code())
     }
 }
 
-impl<E: ErrorMeta + fmt::Debug> std::error::Error for ApiError<E> {}
+impl<E: ErrorMeta + fmt::Debug> std::error::Error for PlatformWebError<E> {}
 
-impl<E: ErrorMeta> IntoResponse for ApiError<E> {
+impl<E: ErrorMeta> IntoResponse for PlatformWebError<E> {
     fn into_response(self) -> Response {
         let ctx = RequestContext::current_or_default();
         let problem =
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn maps_to_correct_status_and_content_type() {
-        let response = ApiError::new(sample_not_found(), "iam").into_response();
+        let response = PlatformWebError::new(sample_not_found(), "iam").into_response();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert_eq!(
             response.headers().get(header::CONTENT_TYPE).unwrap(),
@@ -142,14 +142,14 @@ mod tests {
 
     #[test]
     fn retryable_error_includes_retry_after_header() {
-        let response = ApiError::new(sample_unavailable(), "iam").into_response();
+        let response = PlatformWebError::new(sample_unavailable(), "iam").into_response();
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "10");
     }
 
     #[test]
     fn non_retryable_error_has_no_retry_after_header() {
-        let response = ApiError::new(sample_not_found(), "iam").into_response();
+        let response = PlatformWebError::new(sample_not_found(), "iam").into_response();
         assert!(response.headers().get(header::RETRY_AFTER).is_none());
     }
 
@@ -161,7 +161,7 @@ mod tests {
         };
 
         let body = RequestContext::scope(ctx, async {
-            let response = ApiError::new(sample_not_found(), "iam").into_response();
+            let response = PlatformWebError::new(sample_not_found(), "iam").into_response();
             let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
                 .await
                 .unwrap();
@@ -177,13 +177,13 @@ mod tests {
 
     #[test]
     fn degrades_gracefully_without_task_local_context() {
-        let response = ApiError::new(sample_not_found(), "iam").into_response();
+        let response = PlatformWebError::new(sample_not_found(), "iam").into_response();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
     fn implements_std_error_trait() {
-        let err = ApiError::new(sample_not_found(), "iam");
+        let err = PlatformWebError::new(sample_not_found(), "iam");
         let _: &dyn std::error::Error = &err;
         assert!(format!("{}", err).contains("iam"));
     }

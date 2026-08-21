@@ -1,14 +1,14 @@
 use axum::response::IntoResponse;
 use iam_application::error::AppError;
 
-use platform_web::ApiError as PlatformWebApiError;
+use platform_web::PlatformWebError;
 
 #[derive(Debug)]
-pub struct ApiError(PlatformWebApiError<AppError>);
+pub struct ApiError(PlatformWebError<AppError>);
 
 impl From<AppError> for ApiError {
     fn from(err: AppError) -> Self {
-        Self(PlatformWebApiError::new(err, "iam"))
+        Self(PlatformWebError::new(err, "iam"))
     }
 }
 
@@ -18,7 +18,4 @@ impl IntoResponse for ApiError {
     }
 }
 
-pub use platform_web::ApiOk;
-
-// /// iam-api 专属 HTTP 响应类型别名
-// pub type ApiResult<T = ()> = Result<ApiOk<T>, ApiError>;
+pub use platform_web::PlatformWebOk as ApiOk;

@@ -24,6 +24,9 @@ platform_telemetry = { workspace = true }
 iam_api = { workspace = true }
 iam_infrastructure = { workspace = true }
 
+sys_api = { workspace = true }
+sys_infrastructure = { workspace = true }
+
 # 框架
 tokio = { workspace = true }
 axum = { workspace = true }

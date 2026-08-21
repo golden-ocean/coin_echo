@@ -1,8 +1,6 @@
-//! IAM-Permission 模块的 OpenAPI 文档聚合。
 use utoipa::OpenApi;
 
 use crate::permission::{
-    self,
     create::{CreatePermissionReq, CreatePermissionRes},
     delete::DeletePermissionRes,
     list::{ListPermissionReq, ListPermissionRes},
@@ -12,10 +10,10 @@ use crate::permission::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        permission::create::create_permission,
-        permission::list::list_permission,
-        permission::update::update_permission,
-        permission::delete::delete_permission,
+        crate::permission::create::create_permission,
+        crate::permission::list::list_permission,
+        crate::permission::update::update_permission,
+        crate::permission::delete::delete_permission,
     ),
     components(schemas(
         CreatePermissionReq,
@@ -31,4 +29,3 @@ use crate::permission::{
     ),
 )]
 pub struct PermissionApiDoc;
-

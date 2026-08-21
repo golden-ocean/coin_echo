@@ -65,20 +65,23 @@ pub struct PageRoleRes {
 )]
 pub async fn page_role(
     State(state): State<QueryState>,
-    Query(req): Query<PageRoleReq>,
+    Query(params): Query<PageRoleReq>,
 ) -> Result<ApiOk<PaginatedResponse<PageRoleRes>>, ApiError> {
-    req.validate()
+    params
+        .validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let pagination = PaginationParams::new(
-        req.page.unwrap_or(1),
-        req.per_page.unwrap_or(PaginationParams::DEFAULT_PER_PAGE),
+        params.page.unwrap_or(1),
+        params
+            .per_page
+            .unwrap_or(PaginationParams::DEFAULT_PER_PAGE),
     );
 
     let query = iam_application::queries::RolePageQuery {
-        name: req.name,
-        code: req.code,
-        status: req.status,
+        name: params.name,
+        code: params.code,
+        status: params.status,
         pagination,
     };
 

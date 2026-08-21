@@ -177,7 +177,7 @@ impl User {
         self.name = new_name;
         self.email = new_email;
         self.phone = new_phone;
-        self.audit_meta.update(operator_id, now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -189,8 +189,8 @@ impl User {
     ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
 
-        self.audit_meta.update(operator_id, now);
-        self.delete_meta.delete(operator_id, now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
+        self.delete_meta = self.delete_meta.delete(operator_id, now);
         self.version_meta = self.version_meta.next();
 
         Ok(())
@@ -209,7 +209,7 @@ impl User {
         self.password_credential = self
             .password_credential
             .change(new_password_hash.as_str(), now)?;
-        self.audit_meta.update(operator_id, now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -227,7 +227,7 @@ impl User {
         self.password_credential = self
             .password_credential
             .reset(new_password_hash.as_str(), now)?;
-        self.audit_meta.update(operator_id, now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -245,25 +245,33 @@ impl User {
 
     /// 禁用用户账号
     /// 内置系统账号不可禁用禁用账号
-    pub fn disable(&mut self, operator_id: Uuid, now: DateTime<Utc>) -> Result<(), DomainError> {
+    pub fn disable(
+        &mut self,
+        operator_id: Option<Uuid>,
+        now: DateTime<Utc>,
+    ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-        if self.status == Status::Disabled {
+        if self.status.is_disabled() {
             return Err(DomainError::UserStatusAlreadyDisabled { id: self.id });
         }
         self.status = Status::Disabled;
-        self.audit_meta.update(Some(operator_id), now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
 
     /// 启用账号
-    pub fn enable(&mut self, operator_id: Uuid, now: DateTime<Utc>) -> Result<(), DomainError> {
+    pub fn enable(
+        &mut self,
+        operator_id: Option<Uuid>,
+        now: DateTime<Utc>,
+    ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-        if self.status == Status::Enabled {
+        if self.status.is_enabled() {
             return Err(DomainError::UserStatusAlreadyEnabled { id: self.id });
         }
         self.status = Status::Enabled;
-        self.audit_meta.update(Some(operator_id), now);
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         self.version_meta = self.version_meta.next();
         Ok(())
     }
@@ -699,11 +707,11 @@ mod user_aggregate_tests {
         let mut user = build_normal_test_user(None, now);
 
         // 禁用
-        user.disable(op_uuid, now).unwrap();
+        user.disable(Some(op_uuid), now).unwrap();
         assert_eq!(user.status(), Status::Disabled);
 
         // 启用
-        user.enable(op_uuid, now).unwrap();
+        user.enable(Some(op_uuid), now).unwrap();
         assert_eq!(user.status(), Status::Enabled);
     }
 
@@ -713,12 +721,12 @@ mod user_aggregate_tests {
         let op_uuid = Uuid::now_v7();
         // 内置账号禁用拦截
         let mut admin = build_builtin_admin(None, now);
-        let res1 = admin.disable(op_uuid, now);
+        let res1 = admin.disable(Some(op_uuid), now);
         assert!(matches!(res1, Err(DomainError::UserProtected { .. })));
 
         // 已删除账号禁用拦截
         let mut del = build_deleted_user(None, now);
-        let res2 = del.disable(op_uuid, now);
+        let res2 = del.disable(Some(op_uuid), now);
         assert!(matches!(res2, Err(DomainError::UserNotFound { .. })));
     }
 

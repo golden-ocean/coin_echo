@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use platform_kernel::meta::{AuditMeta, DeleteMeta, Status, VersionMeta};
+use platform_kernel::meta::{AuditMeta, DeleteMeta, Status};
 
 use crate::{
     error::DomainError,
@@ -46,12 +46,10 @@ pub struct Permission {
 
     audit_meta: AuditMeta,
     delete_meta: DeleteMeta,
-    version_meta: VersionMeta,
 }
 
 impl Permission {
     /// 创建新权限
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: PermissionId,
         parent_id: Option<PermissionId>,
@@ -88,12 +86,10 @@ impl Permission {
             status: status.unwrap_or(Status::Enabled),
             audit_meta: AuditMeta::new(operator_id, now),
             delete_meta: DeleteMeta::new(),
-            version_meta: VersionMeta::new(),
         })
     }
 
     /// 从数据库还原
-    #[allow(clippy::too_many_arguments)]
     pub fn restore(
         id: PermissionId,
         parent_id: Option<PermissionId>,
@@ -111,7 +107,6 @@ impl Permission {
         status: Status,
         audit_meta: AuditMeta,
         delete_meta: DeleteMeta,
-        version_meta: VersionMeta,
     ) -> Self {
         Self {
             id,
@@ -130,7 +125,6 @@ impl Permission {
             status,
             audit_meta,
             delete_meta,
-            version_meta,
         }
     }
 
@@ -187,7 +181,6 @@ impl Permission {
     }
 
     /// 更新权限基本信息（不含 parent_id，父级变更走 change_parent）
-    #[allow(clippy::too_many_arguments)]
     pub fn update_info(
         &mut self,
         new_name: PermissionName,
@@ -226,8 +219,7 @@ impl Permission {
         if let Some(sort) = new_sort {
             self.sort = sort;
         }
-        self.audit_meta.update(operator_id, now);
-        self.version_meta = self.version_meta.next();
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         Ok(())
     }
 
@@ -251,8 +243,7 @@ impl Permission {
         }
 
         self.parent_id = new_parent_id;
-        self.audit_meta.update(operator_id, now);
-        self.version_meta = self.version_meta.next();
+        self.audit_meta = self.audit_meta.update(operator_id, now);
         Ok(())
     }
 
@@ -263,34 +254,30 @@ impl Permission {
         now: DateTime<Utc>,
     ) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-
-        self.audit_meta.update(operator_id, now);
-        self.delete_meta.delete(operator_id, now);
-        self.version_meta = self.version_meta.next();
+        self.audit_meta = self.audit_meta.update(operator_id, now);
+        self.delete_meta = self.delete_meta.delete(operator_id, now);
         Ok(())
     }
 
     /// 启用权限
     pub fn enable(&mut self, operator_id: Uuid, now: DateTime<Utc>) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-        if self.status == Status::Enabled {
+        if self.status.is_enabled() {
             return Err(DomainError::PermissionStatusAlreadyEnabled { id: self.id });
         }
         self.status = Status::Enabled;
-        self.audit_meta.update(Some(operator_id), now);
-        self.version_meta = self.version_meta.next();
+        self.audit_meta = self.audit_meta.update(Some(operator_id), now);
         Ok(())
     }
 
     /// 禁用权限
     pub fn disable(&mut self, operator_id: Uuid, now: DateTime<Utc>) -> Result<(), DomainError> {
         self.ensure_modifiable()?;
-        if self.status == Status::Disabled {
+        if self.status.is_disabled() {
             return Err(DomainError::PermissionStatusAlreadyDisabled { id: self.id });
         }
         self.status = Status::Disabled;
-        self.audit_meta.update(Some(operator_id), now);
-        self.version_meta = self.version_meta.next();
+        self.audit_meta = self.audit_meta.update(Some(operator_id), now);
         Ok(())
     }
 
@@ -347,9 +334,6 @@ impl Permission {
     }
     pub fn delete_meta(&self) -> &DeleteMeta {
         &self.delete_meta
-    }
-    pub fn version_meta(&self) -> &VersionMeta {
-        &self.version_meta
     }
 }
 
@@ -429,7 +413,6 @@ mod permission_aggregate_tests {
         assert_eq!(p.sort(), 1000);
         assert_eq!(p.status(), Status::Enabled);
         assert!(p.is_root());
-        assert_eq!(p.version_meta().value(), 0);
         assert_eq!(p.audit_meta().created_by(), Some(operator_uuid()));
         assert_eq!(p.route_path(), Some("/system/user"));
     }
@@ -487,7 +470,6 @@ mod permission_aggregate_tests {
         assert_eq!(p.name().as_str(), "用户管理v2");
         assert_eq!(p.sort(), 600);
         assert_eq!(p.route_path(), Some("/system/user/v2"));
-        assert_eq!(p.version_meta().value(), 1);
     }
 
     #[test]
@@ -555,7 +537,6 @@ mod permission_aggregate_tests {
 
         assert_eq!(p.parent_id(), Some(parent_id));
         assert!(!p.is_root());
-        assert_eq!(p.version_meta().value(), 1);
     }
 
     #[test]

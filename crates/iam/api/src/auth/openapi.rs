@@ -1,8 +1,6 @@
-//! IAM-Auth 模块的 OpenAPI 文档聚合。
 use utoipa::OpenApi;
 
 use crate::auth::{
-    self,
     login::{LoginReq, LoginRes},
     refresh::{RefreshTokenReq, RefreshTokenRes},
 };
@@ -10,8 +8,8 @@ use crate::auth::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        auth::login::login,
-        auth::refresh::refresh_token,
+        crate::auth::login::login,
+        crate::auth::refresh::refresh_token,
     ),
     components(schemas(
         LoginReq,
