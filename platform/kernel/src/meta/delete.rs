@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DeleteMeta {
     deleted_at: Option<DateTime<Utc>>,
     deleted_by: Option<Uuid>,
@@ -9,21 +9,17 @@ pub struct DeleteMeta {
 
 impl DeleteMeta {
     pub fn new() -> Self {
-        Self {
-            deleted_at: None,
-            deleted_by: None,
-        }
+        Self::default()
     }
 
-    pub fn delete(&mut self, deleter_id: Option<Uuid>, now: DateTime<Utc>) -> Self {
+    pub fn delete(&self, deleter_id: Option<Uuid>, now: DateTime<Utc>) -> Self {
         if self.deleted_at.is_none() {
             Self {
                 deleted_at: Some(now),
                 deleted_by: deleter_id,
-                ..self.clone()
             }
         } else {
-            self.clone()
+            *self
         }
     }
 
@@ -55,12 +51,12 @@ mod tests {
     /// 测试正常删除、重复删除不覆盖历史数据
     #[test]
     fn test_delete_skip_duplicate() {
-        let mut del_meta = DeleteMeta::new();
+        let del_meta = DeleteMeta::new();
         let del_user = Some(Uuid::now_v7());
 
-        // 第一次删除
+        // 第一次删除：接收返回的新对象
         let now = Utc::now();
-        del_meta.delete(del_user, now);
+        let del_meta = del_meta.delete(del_user, now);
         assert!(del_meta.is_deleted());
         assert_eq!(del_meta.deleted_by(), del_user);
         let first_del_time = del_meta.deleted_at();
@@ -68,33 +64,34 @@ mod tests {
         // 第二次删除，更换操作人，时间不变
         let another_user = Some(Uuid::now_v7());
         let now = Utc::now();
-        del_meta.delete(another_user, now);
+        let del_meta = del_meta.delete(another_user, now);
+
         // 删除人、时间仍为第一次记录，不会被覆盖
         assert_eq!(del_meta.deleted_by(), del_user);
         assert_eq!(del_meta.deleted_at(), first_del_time);
     }
 
-    /// 测试匿名删除（操作人传None）
+    /// 测试匿名删除（操作人传 None）
     #[test]
     fn test_anonymous_delete() {
-        let mut del_meta = DeleteMeta::new();
+        let del_meta = DeleteMeta::new();
         let now = Utc::now();
-        del_meta.delete(None::<Uuid>, now);
+        let del_meta = del_meta.delete(None, now);
 
         assert!(del_meta.is_deleted());
         assert!(del_meta.deleted_by().is_none());
     }
 
-    /// 自定义固定时间删除，适配单元测试Mock时间场景
+    /// 自定义固定时间删除，适配单元测试 Mock 时间场景
     #[test]
     fn test_custom_fixed_time_delete() {
-        let mut del_meta = DeleteMeta::new();
+        let del_meta = DeleteMeta::new();
         let fixed_t = DateTime::parse_from_rfc3339("2026-05-01T10:00:00Z")
             .unwrap()
             .with_timezone(&Utc);
         let uid = Some(Uuid::now_v7());
 
-        del_meta.delete(uid, fixed_t);
+        let del_meta = del_meta.delete(uid, fixed_t);
         assert_eq!(del_meta.deleted_at(), Some(fixed_t));
     }
 
@@ -105,5 +102,17 @@ mod tests {
         assert!(!del_meta.is_deleted());
         assert!(del_meta.deleted_at().is_none());
         assert!(del_meta.deleted_by().is_none());
+    }
+
+    /// 测试恢复/从持久化层恢复数据
+    #[test]
+    fn test_restore() {
+        let fixed_t = Some(Utc::now());
+        let uid = Some(Uuid::now_v7());
+
+        let del_meta = DeleteMeta::restore(fixed_t, uid);
+        assert!(del_meta.is_deleted());
+        assert_eq!(del_meta.deleted_at(), fixed_t);
+        assert_eq!(del_meta.deleted_by(), uid);
     }
 }

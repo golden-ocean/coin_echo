@@ -60,6 +60,8 @@ dependencies = [
  "axum",
  "iam_api",
  "iam_infrastructure",
+ "org_api",
+ "org_infrastructure",
  "platform_cache",
  "platform_config",
  "platform_database",
@@ -1863,18 +1865,56 @@ dependencies = [
 [[package]]
 name = "org_api"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "org_application",
+ "platform_kernel",
+ "platform_middleware",
+ "platform_security",
+ "platform_web",
+ "serde",
+ "sqlx",
+ "utoipa",
+ "uuid",
+ "validator",
+]
 
 [[package]]
 name = "org_application"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "org_domain",
+ "platform_kernel",
+ "sqlx",
+ "thiserror 2.0.19",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "org_domain"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "platform_kernel",
+ "thiserror 2.0.19",
+ "uuid",
+]
 
 [[package]]
 name = "org_infrastructure"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "org_application",
+ "org_domain",
+ "platform_kernel",
+ "sqlx",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "p256"

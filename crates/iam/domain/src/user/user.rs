@@ -413,7 +413,7 @@ mod user_aggregate_tests {
     fn build_deleted_user(operator: Option<Uuid>, now: DateTime<Utc>) -> User {
         let mut user = build_normal_test_user(operator, now);
         // 标记软删除
-        user.delete_meta.delete(Some(Uuid::now_v7()), now);
+        user.delete_meta = user.delete_meta.delete(Some(Uuid::now_v7()), now);
         user
     }
 
@@ -740,7 +740,7 @@ mod user_aggregate_tests {
 
         // 已删除 → false
         let mut u2 = build_normal_test_user(None, now);
-        u2.delete_meta.delete(None::<Uuid>, now);
+        u2.delete_meta = u2.delete_meta.delete(None::<Uuid>, now);
         assert!(!u2.is_normal_active());
 
         // 禁用 → false
@@ -796,7 +796,7 @@ mod user_aggregate_tests {
         let mut user = build_normal_test_user(None, now);
         assert!(!user.is_deleted());
 
-        user.delete_meta.delete(None::<Uuid>, now);
+        user.delete_meta = user.delete_meta.delete(None::<Uuid>, now);
         assert!(user.is_deleted());
     }
 

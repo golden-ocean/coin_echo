@@ -41,13 +41,13 @@ impl ErrorMeta for PortError {
 
     fn code(&self) -> &'static str {
         match self {
-            Self::NotFound { .. } => "iam.port.not_found",
-            Self::UniqueConflict { .. } => "iam.port.unique_conflict",
-            Self::VersionConflict { .. } => "iam.port.version_conflict",
-            Self::HasChildren { .. } => "iam.port.has_children",
-            Self::ValueConvert { .. } => "iam.port.value_convert_failed",
-            Self::Database => "iam.port.database_error",
-            Self::Infrastructure(_) => "iam.port.infrastructure_error",
+            Self::NotFound { .. } => "sys.port.not_found",
+            Self::UniqueConflict { .. } => "sys.port.unique_conflict",
+            Self::VersionConflict { .. } => "sys.port.version_conflict",
+            Self::HasChildren { .. } => "sys.port.has_children",
+            Self::ValueConvert { .. } => "sys.port.value_convert_failed",
+            Self::Database => "sys.port.database_error",
+            Self::Infrastructure(_) => "sys.port.infrastructure_error",
         }
     }
 

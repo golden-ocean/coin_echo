@@ -23,7 +23,8 @@ platform_telemetry = { workspace = true }
 
 iam_api = { workspace = true }
 iam_infrastructure = { workspace = true }
-
+org_api = { workspace = true }
+org_infrastructure = { workspace = true }
 sys_api = { workspace = true }
 sys_infrastructure = { workspace = true }
 

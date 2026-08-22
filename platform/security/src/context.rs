@@ -97,7 +97,7 @@ pub enum SecurityContextError {
 impl ErrorMeta for SecurityContextError {
     fn kind(&self) -> ErrorKind {
         match self {
-            SecurityContextError::Missing => ErrorKind::Unauthenticated,
+            SecurityContextError::Missing => ErrorKind::Internal,
         }
     }
 

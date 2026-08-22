@@ -8,7 +8,7 @@ use crate::{
 use platform_kernel::error::{ErrorKind, ErrorMeta, FieldError};
 use sys_domain::error::DomainError;
 
-/// IAM 应用统一对外错误
+/// sys 应用统一对外错误
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error(transparent)]
@@ -62,10 +62,10 @@ impl ErrorMeta for AppError {
 
             Self::UnitOfWork(e) => e.code(),
 
-            Self::Validation(_) => "iam.app.validation",
-            Self::Unauthorized => "iam.app.unauthorized",
-            Self::Forbidden => "iam.app.forbidden",
-            Self::Internal => "iam.app.internal",
+            Self::Validation(_) => "sys.app.validation",
+            Self::Unauthorized => "sys.app.unauthorized",
+            Self::Forbidden => "sys.app.forbidden",
+            Self::Internal => "sys.app.internal",
         }
     }
 

@@ -7,7 +7,7 @@ use axum::{
 use platform_middleware::PermissionLayer;
 use platform_security::casbin::CasbinEnforcer;
 
-use crate::{dictionary, dictionary_item, state::SysState};
+use crate::{dictionary, dictionary_item, policy, state::SysState};
 
 /// 模块内部路由表
 pub fn protected_router(state: SysState, enforcer: Arc<CasbinEnforcer>) -> Router {
@@ -22,51 +22,65 @@ pub fn protected_router(state: SysState, enforcer: Arc<CasbinEnforcer>) -> Route
 
 fn dictionary_router(enforcer: Arc<CasbinEnforcer>) -> Router<SysState> {
     Router::new()
-        .route("/", post(dictionary::create_dictionary))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary:create",
-        ))
-        .route("/", get(dictionary::list_dictionary))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary:list",
-        ))
-        .route("/{id}", put(dictionary::update_dictionary))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary:update",
-        ))
-        .route("/{id}", delete(dictionary::delete_dictionary))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary:delete",
-        ))
+        .route(
+            "/",
+            post(dictionary::create_dictionary).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary::CREATE,
+            )),
+        )
+        .route(
+            "/",
+            get(dictionary::list_dictionary).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary::LIST,
+            )),
+        )
+        .route(
+            "/{id}",
+            put(dictionary::update_dictionary).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary::UPDATE,
+            )),
+        )
+        .route(
+            "/{id}",
+            delete(dictionary::delete_dictionary).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary::DELETE,
+            )),
+        )
 }
 
 fn dictionary_item_router(enforcer: Arc<CasbinEnforcer>) -> Router<SysState> {
     Router::new()
-        .route("/", post(dictionary_item::create_dictionary_item))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary_item:create",
-        ))
-        .route("/", get(dictionary_item::page_dictionary_item))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary_item:page",
-        ))
+        .route(
+            "/",
+            post(dictionary_item::create_dictionary_item).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary_item::CREATE,
+            )),
+        )
+        .route(
+            "/",
+            get(dictionary_item::page_dictionary_item).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary_item::PAGE,
+            )),
+        )
         .route(
             "/{id}/display",
-            put(dictionary_item::update_dictionary_item),
+            put(dictionary_item::update_dictionary_item).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary_item::UPDATE,
+            )),
         )
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary_item:update",
-        ))
-        .route("/{id}", delete(dictionary_item::delete_dictionary_item))
-        .route_layer(PermissionLayer::new(
-            Arc::clone(&enforcer),
-            "sys:dictionary_item:delete",
-        ))
+        .route(
+            "/{id}",
+            delete(dictionary_item::delete_dictionary_item).route_layer(PermissionLayer::new(
+                Arc::clone(&enforcer),
+                policy::sys_policy::dictionary_item::DELETE,
+            )),
+        )
 }
+

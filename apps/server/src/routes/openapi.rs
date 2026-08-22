@@ -36,6 +36,7 @@ pub fn router() -> Router {
 async fn serve_spec() -> Json<utoipa::openapi::OpenApi> {
     let doc = ApiDoc::openapi()
         .nest("/api/v1/iam", iam_api::openapi::IamApiDoc::openapi())
+        .nest("/api/v1/org", org_api::openapi::OrgApiDoc::openapi())
         .nest("/api/v1/sys", sys_api::openapi::SysApiDoc::openapi());
 
     Json(doc)

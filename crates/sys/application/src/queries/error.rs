@@ -39,10 +39,10 @@ impl ErrorMeta for QueryError {
 
     fn code(&self) -> &'static str {
         match self {
-            Self::NotFound => "iam.query.not_found",
-            Self::InvalidParameter { .. } => "iam.query.invalid_parameter",
-            Self::Database => "iam.query.database_error",
-            Self::Timeout => "iam.query.timeout",
+            Self::NotFound => "sys.query.not_found",
+            Self::InvalidParameter { .. } => "sys.query.invalid_parameter",
+            Self::Database => "sys.query.database_error",
+            Self::Timeout => "sys.query.timeout",
         }
     }
 

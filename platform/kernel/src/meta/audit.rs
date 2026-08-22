@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 /// 实体审计元数据
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AuditMeta {
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -17,12 +17,11 @@ impl AuditMeta {
     /// - creator_id: 创建操作人UUID，无则传None
     /// - now: 当前UTC时间戳，统一由上层clock/业务传入便于单元测试Mock
     pub fn new(creator_id: Option<Uuid>, now: DateTime<Utc>) -> Self {
-        let creator_uuid = creator_id.map(Into::into);
         Self {
             created_at: now,
             updated_at: now,
-            created_by: creator_uuid,
-            updated_by: creator_uuid,
+            created_by: creator_id,
+            updated_by: creator_id,
         }
     }
 
@@ -34,7 +33,7 @@ impl AuditMeta {
         Self {
             updated_at: now,
             updated_by: operator_id.map(Into::into),
-            ..self.clone()
+            ..*self
         }
     }
 
@@ -82,10 +81,8 @@ mod tests {
     /// 测试正常带操作人创建、单次更新流程
     #[test]
     fn test_audit_normal_create_and_update() {
-        // 生成测试用户UUID
         let creator = Some(Uuid::now_v7());
         let now = Utc::now();
-        // 构造审计元数据（自动取当前时间）
         let audit = AuditMeta::new(creator, now);
 
         // 校验创建阶段：创建/更新时间、操作人完全一致
@@ -93,32 +90,29 @@ mod tests {
         assert_eq!(audit.updated_by(), creator);
         assert_eq!(audit.created_at(), audit.updated_at());
 
-        // 模拟另一个用户执行更新操作
+        // 模拟另一个用户执行更新操作，重新绑定返回的实例
         let updater = Some(Uuid::now_v7());
         let now = Utc::now();
-        audit.update(updater, now);
+        let audit = audit.update(updater, now);
 
         // 更新后校验：创建信息不变，更新信息变更
         assert_eq!(audit.created_by(), creator);
         assert_eq!(audit.updated_by(), updater);
-        // 更新时间 >= 创建时间
         assert!(audit.updated_at() >= audit.created_at());
     }
 
-    /// 测试匿名创建（操作人传None）
+    /// 测试匿名创建与更新（操作人传 None）
     #[test]
     fn test_audit_anonymous_creator() {
-        // 匿名创建，无操作人ID
         let now = Utc::now();
-        let audit = AuditMeta::new(None::<Uuid>, now);
+        let audit = AuditMeta::new(None, now);
 
         assert!(audit.created_by().is_none());
         assert!(audit.updated_by().is_none());
 
-        // 匿名更新（显式传递 None）
+        // 匿名更新，重新绑定实例
         let now = Utc::now();
-        // 如果使用 Option<T> 泛型版本：
-        audit.update(None::<Uuid>, now);
+        let audit = audit.update(None::<Uuid>, now);
 
         assert!(audit.updated_by().is_none());
     }
@@ -139,9 +133,24 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
 
-        // 匿名更新传 None
-        audit.update(None::<Uuid>, new_fixed);
+        // 匿名更新传 None，重新绑定实例
+        let audit = audit.update(None::<Uuid>, new_fixed);
         assert_eq!(audit.updated_at(), new_fixed);
         assert!(audit.updated_by().is_none());
+    }
+
+    /// 从持久化恢复数据测试
+    #[test]
+    fn test_audit_restore() {
+        let created_at = Utc::now();
+        let updated_at = Utc::now();
+        let created_by = Some(Uuid::now_v7());
+        let updated_by = Some(Uuid::now_v7());
+
+        let audit = AuditMeta::restore(created_at, updated_at, created_by, updated_by);
+        assert_eq!(audit.created_at(), created_at);
+        assert_eq!(audit.updated_at(), updated_at);
+        assert_eq!(audit.created_by(), created_by);
+        assert_eq!(audit.updated_by(), updated_by);
     }
 }

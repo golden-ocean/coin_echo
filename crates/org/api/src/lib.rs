@@ -1,14 +1,9 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub mod organization;
+pub mod position;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod openapi;
+pub mod response;
+pub mod router;
+pub mod state;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod policy;

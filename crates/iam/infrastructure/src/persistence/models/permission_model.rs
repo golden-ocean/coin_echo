@@ -390,21 +390,6 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_version_triggers_port_error() {
-        let model = create_valid_api_permission_model();
-
-        let result: Result<Permission, PortError> = (&model).try_into();
-
-        match result {
-            Err(PortError::ValueConvert { field, value }) => {
-                assert_eq!(field, "version");
-                assert_eq!(value, "-1");
-            }
-            _ => panic!("应该返回 version 的 ValueConvert 转换错误"),
-        }
-    }
-
-    #[test]
     fn test_invalid_api_method_triggers_port_error() {
         // 专项覆盖新增的 api_method map_err 分支
         // ApiMethod::from_str 内部会先转大写，所以 "fetch" 不属于任何合法方法

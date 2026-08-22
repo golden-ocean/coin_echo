@@ -18,14 +18,14 @@ where
     router
         .layer(security_headers::layer())
         .layer(cors::layer(&config.cors))
-        // .layer(compression::layer())        // 未启用
         .layer(timeout::layer(config.timeout_secs))
         .layer(body_limit::layer(config.body_limit_bytes))
-        // .layer(rate_limit::layer(&config.rate_limit))  // 未启用
         .layer(catch_panic::layer())
-        .layer(trace::layer::<axum::body::Body>())
-        .layer(sensitive_headers::request_layer())
-        .layer(sensitive_headers::response_layer())
-        .layer(RequestContextLayer)
-        .layer(request_id::layer())
+        // ----------------- 日志与脱敏核心层 -----------------
+        .layer(sensitive_headers::response_layer()) // 响应先脱敏，再打日志
+        .layer(trace::layer::<axum::body::Body>()) // 记录日志
+        .layer(sensitive_headers::request_layer()) // 请求先脱敏，再传给日志
+        // ----------------------------------------------------
+        .layer(RequestContextLayer) // 注入请求上下文
+        .layer(request_id::layer()) // 最最优先生成 Request ID
 }

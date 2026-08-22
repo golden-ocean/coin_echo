@@ -6,6 +6,20 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+platform_kernel = { workspace = true }
+platform_web = { workspace = true }
+platform_security = { workspace = true }
+platform_middleware = { workspace = true }
+
+org_application = { workspace = true }
+
+# 第三方
+axum = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+utoipa = { workspace = true }
+serde = { workspace = true }
+validator = { workspace = true }
 
 [lints]
 workspace = true

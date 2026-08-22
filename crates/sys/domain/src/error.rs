@@ -91,13 +91,13 @@ impl ErrorMeta for DomainError {
             Self::DictionaryName(e) => e.code(),
 
             // Dictionary 状态/权限规则
-            Self::DictionaryHasItems { .. } => "iam.dictionary.has_items",
-            Self::DictionaryStatusAlreadyEnabled { .. } => "iam.dictionary.status.already_enabled",
+            Self::DictionaryHasItems { .. } => "sys.dictionary.has_items",
+            Self::DictionaryStatusAlreadyEnabled { .. } => "sys.dictionary.status.already_enabled",
             Self::DictionaryStatusAlreadyDisabled { .. } => {
-                "iam.dictionary.status.already_disabled"
+                "sys.dictionary.status.already_disabled"
             }
-            Self::DictionaryNotFound { .. } => "iam.dictionary.not_found",
-            Self::DictionaryProtected { .. } => "iam.dictionary.protected",
+            Self::DictionaryNotFound { .. } => "sys.dictionary.not_found",
+            Self::DictionaryProtected { .. } => "sys.dictionary.protected",
 
             // DictionaryItem
             Self::DictionaryItemLabel(e) => e.code(),
@@ -105,13 +105,13 @@ impl ErrorMeta for DomainError {
             Self::DictionaryItemColor(e) => e.code(),
 
             Self::DictionaryItemStatusAlreadyEnabled { .. } => {
-                "iam.dictionary_item.status.already_enabled"
+                "sys.dictionary_item.status.already_enabled"
             }
             Self::DictionaryItemStatusAlreadyDisabled { .. } => {
-                "iam.dictionary_item.status.already_disabled"
+                "sys.dictionary_item.status.already_disabled"
             }
-            Self::DictionaryItemNotFound { .. } => "iam.dictionary_item.not_found",
-            Self::DictionaryItemProtected { .. } => "iam.dictionary_item.protected",
+            Self::DictionaryItemNotFound { .. } => "sys.dictionary_item.not_found",
+            Self::DictionaryItemProtected { .. } => "sys.dictionary_item.protected",
         }
     }
 

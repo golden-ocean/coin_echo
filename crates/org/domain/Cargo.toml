@@ -6,6 +6,12 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+platform_kernel = { workspace = true }
+
+# 第三方
+thiserror = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
 
 [lints]
 workspace = true
