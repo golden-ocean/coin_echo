@@ -452,7 +452,7 @@ mod user_aggregate_tests {
         origin.gender = Gender::Female;
         origin.birthday = Some(chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap());
         origin.avatar = Some("https://xxx.com/avatar.png".to_string());
-        origin.position_id = Some(PositionId::generate());
+        origin.position_id = Some(PositionId::from_uuid(uuid::Uuid::now_v7()));
         origin.role_ids = vec![RoleId::generate()];
         origin.remark = Some("测试备注".to_string());
         origin.data_scope = DataScope::DepartmentAndChildren;
